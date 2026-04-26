@@ -129,28 +129,26 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .label-edit-actions{display:flex;gap:8px;justify-content:flex-end}
 
 /* フッター */
-.footer{display:flex;justify-content:space-between;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 18px}
+.footer{display:flex;justify-content:space-between;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 18px;gap:8px;flex-wrap:wrap}
 .btn-del{background:none;border:1px solid rgba(247,97,79,.25);border-radius:8px;color:var(--red);font-family:var(--font);font-size:13px;padding:7px 14px;cursor:pointer;display:none}
 .btn-del:hover{background:rgba(247,97,79,.1)}
+
+/* 管理者パスコード */
+.passcode-wrap{display:flex;align-items:center;gap:6px}
+.passcode-wrap input{width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--mono);font-size:14px;padding:5px 10px;outline:none;text-align:center;letter-spacing:4px}
+.passcode-wrap input:focus{border-color:var(--accent)}
+.passcode-wrap label{font-size:11px;color:var(--muted)}
+
+/* 管理者パネル */
+.admin-panel{background:rgba(79,142,247,.06);border:1px solid rgba(79,142,247,.25);border-radius:14px;padding:16px;display:none;flex-direction:column;gap:10px}
+.admin-panel-title{font-size:12px;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.admin-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn-reset{background:none;border:1px solid rgba(247,97,79,.4);border-radius:8px;color:var(--red);font-family:var(--font);font-size:13px;font-weight:600;padding:8px 16px;cursor:pointer;transition:background .15s}
+.btn-reset:hover{background:rgba(247,97,79,.12)}
 
 /* リップル */
 @keyframes rip{from{transform:translate(-50%,-50%) scale(0);opacity:.7}to{transform:translate(-50%,-50%) scale(5);opacity:0}}
 .rip{position:absolute;width:20px;height:20px;background:rgba(79,142,247,.35);border-radius:50%;pointer-events:none;animation:rip .4s ease-out forwards;z-index:99}
-
-/* リセットモーダル */
-#reset-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center}
-#reset-modal.open{display:flex}
-.modal-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px 24px;width:100%;max-width:320px;text-align:center}
-.modal-card h3{font-size:16px;font-weight:600;margin-bottom:6px}
-.modal-card p{font-size:12px;color:var(--muted);margin-bottom:18px;line-height:1.7}
-.passcode-row{display:flex;justify-content:center;gap:10px;margin-bottom:16px}
-.passcode-digit{width:44px;height:54px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--mono);font-size:22px;font-weight:600;text-align:center;outline:none;transition:border-color .2s}
-.passcode-digit:focus{border-color:var(--accent)}
-.modal-actions{display:flex;gap:8px}
-.modal-actions button{flex:1;border:none;border-radius:9px;padding:11px;font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer}
-.btn-modal-cancel{background:var(--surface2);color:var(--muted)}
-.btn-modal-ok{background:var(--red);color:#fff}
-#reset-msg{font-size:12px;color:var(--red);margin-top:10px;min-height:16px}
 </style>
 </head>
 <body>
@@ -214,7 +212,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     <!-- トピック -->
     <div class="topic-row">
       <div id="topic-disp" class="empty">（質問・テーマ未設定）</div>
-      <button class="btn-sm" id="topic-btn">✏️ テーマ編集</button>
+      <button class="btn-sm" id="topic-btn" style="display:none">✏️ テーマ編集</button>
     </div>
     <div class="topic-edit-row" id="topic-row">
       <input type="text" id="topic-input" placeholder="例: 人に触れられるとき、どう感じますか？" maxlength="60">
@@ -241,8 +239,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
     <div id="instr">← キャンバスをクリックして自分の感覚をプロットしてください →</div>
 
-    <!-- ラベル編集パネル -->
-    <div style="text-align:right;margin-top:10px">
+    <!-- ラベル編集パネル（管理者のみ表示） -->
+    <div style="text-align:right;margin-top:10px;display:none" id="label-btn-wrap">
       <button class="btn-sm" id="label-btn">✏️ ラベル編集</button>
     </div>
     <div class="label-edit-area" id="label-area">
@@ -271,28 +269,22 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     </div>
   </div>
 
+  <!-- 管理者パネル -->
+  <div class="admin-panel" id="admin-panel">
+    <div class="admin-panel-title">🔐 管理者モード</div>
+    <div class="admin-actions">
+      <button class="btn-sm" id="admin-topic-btn" style="border-color:var(--accent);color:var(--accent)">✏️ テーマ編集</button>
+      <button class="btn-sm" id="admin-label-btn" style="border-color:var(--accent);color:var(--accent)">✏️ ラベル編集</button>
+      <button class="btn-reset" id="full-reset-btn">⚠️ 全データリセット</button>
+    </div>
+  </div>
+
   <div class="footer">
     <button class="btn-sm" id="reset-btn">← 名前を変更</button>
-    <button class="btn-sm" id="admin-reset-btn" style="border-color:rgba(247,97,79,.4);color:var(--red)">🔄 全リセット</button>
     <button class="btn-del" id="del-btn">× 自分のプロットを削除</button>
-  </div>
-</div>
-
-<!-- リセットモーダル -->
-<div id="reset-modal">
-  <div class="modal-card">
-    <h3>🔐 管理者リセット</h3>
-    <p>パスコードを入力すると、全員のプロット・<br>ラベル・テーマをすべてリセットします。</p>
-    <div class="passcode-row">
-      <input class="passcode-digit" id="pc0" type="password" maxlength="1" inputmode="numeric">
-      <input class="passcode-digit" id="pc1" type="password" maxlength="1" inputmode="numeric">
-      <input class="passcode-digit" id="pc2" type="password" maxlength="1" inputmode="numeric">
-      <input class="passcode-digit" id="pc3" type="password" maxlength="1" inputmode="numeric">
-    </div>
-    <div id="reset-msg"></div>
-    <div class="modal-actions" style="margin-top:12px">
-      <button class="btn-modal-cancel" id="modal-cancel">キャンセル</button>
-      <button class="btn-modal-ok" id="modal-ok">リセット実行</button>
+    <div class="passcode-wrap">
+      <label>管理者</label>
+      <input type="password" id="passcode-input" maxlength="4" placeholder="••••">
     </div>
   </div>
 </div>
@@ -360,10 +352,35 @@ const lblTopInput    = $('lbl-top-input');
 const lblBottomInput = $('lbl-bottom-input');
 const lblLeftInput   = $('lbl-left-input');
 const lblRightInput  = $('lbl-right-input');
-const labelBtn   = $('label-btn');
-const labelArea  = $('label-area');
-const labelSave  = $('label-save');
-const labelCancel= $('label-cancel');
+const labelBtn      = $('label-btn');
+const labelBtnWrap  = $('label-btn-wrap');
+const labelArea     = $('label-area');
+const labelSave     = $('label-save');
+const labelCancel   = $('label-cancel');
+const adminPanel    = $('admin-panel');
+const adminTopicBtn = $('admin-topic-btn');
+const adminLabelBtn = $('admin-label-btn');
+const fullResetBtn  = $('full-reset-btn');
+const passcodeInput = $('passcode-input');
+
+const ADMIN_CODE = '0000';
+let isAdmin = sessionStorage.getItem('oc_admin') === '1';
+
+function setAdminMode(on) {
+  isAdmin = on;
+  sessionStorage.setItem('oc_admin', on ? '1' : '0');
+  adminPanel.style.display    = on ? 'flex' : 'none';
+  if (on) passcodeInput.value = '';
+}
+
+// パスコード入力
+passcodeInput && passcodeInput.addEventListener('input', () => {
+  if (passcodeInput.value === ADMIN_CODE) setAdminMode(true);
+  if (passcodeInput.value.length === 4 && passcodeInput.value !== ADMIN_CODE) {
+    passcodeInput.style.borderColor = 'var(--red)';
+    setTimeout(() => { passcodeInput.style.borderColor = ''; passcodeInput.value = ''; }, 600);
+  }
+});
 
 // 公開URLを自動検出
 function detectHostUrl() {
@@ -455,6 +472,7 @@ nameInput.addEventListener('keydown', e => { if(e.key==='Enter') joinBtn.click()
 function showMain() {
   mainEl.style.display = 'flex';
   myNameLbl.textContent = myName;
+  if (isAdmin) setAdminMode(true);
   startPolling();
 }
 
@@ -464,72 +482,18 @@ resetBtn.addEventListener('click', () => {
   location.reload();
 });
 
-// 全リセットボタン
-const adminResetBtn = $('admin-reset-btn');
-const resetModal    = $('reset-modal');
-const modalCancel   = $('modal-cancel');
-const modalOk       = $('modal-ok');
-const resetMsg      = $('reset-msg');
-const pcInputs      = [0,1,2,3].map(i => $('pc' + i));
-
-adminResetBtn.addEventListener('click', () => {
-  resetModal.classList.add('open');
-  pcInputs.forEach(el => el.value = '');
-  resetMsg.textContent = '';
-  pcInputs[0].focus();
-});
-modalCancel.addEventListener('click', () => {
-  resetModal.classList.remove('open');
-});
-resetModal.addEventListener('click', e => {
-  if (e.target === resetModal) resetModal.classList.remove('open');
-});
-
-// 数字を入れたら自動で次へ
-pcInputs.forEach((el, i) => {
-  el.addEventListener('input', () => {
-    el.value = el.value.replace(/\D/g, '').slice(-1);
-    if (el.value && i < 3) pcInputs[i + 1].focus();
-  });
-  el.addEventListener('keydown', e => {
-    if (e.key === 'Backspace' && !el.value && i > 0) pcInputs[i - 1].focus();
-    if (e.key === 'Enter') modalOk.click();
-  });
-});
-
-modalOk.addEventListener('click', async () => {
-  const passcode = pcInputs.map(el => el.value).join('');
-  if (passcode.length < 4) { resetMsg.textContent = '4桁入力してください'; return; }
-  modalOk.disabled = true;
-  modalOk.textContent = '処理中...';
-  resetMsg.textContent = '';
-  try {
-    const data = await fetchGAS(apiUrl, { action: 'reset', passcode });
-    if (!data.ok) throw new Error(data.error || 'エラー');
-    // UI側もリセット
-    opinions = {};
-    applyLabels('', '', '✖', '○');
-    topicDisp.textContent = '（質問・テーマ未設定）';
-    topicDisp.classList.add('empty');
-    topicInput.value = '';
-    render();
-    resetModal.classList.remove('open');
-  } catch(e) {
-    resetMsg.textContent = e.message;
-    pcInputs.forEach(el => el.value = '');
-    pcInputs[0].focus();
-  }
-  modalOk.disabled = false;
-  modalOk.textContent = 'リセット実行';
-});
-
 delBtn.addEventListener('click', async () => {
   delete opinions[myUID];
   render();
   await fetchGAS(apiUrl, { action: 'delete', uid: myUID });
 });
 
-// トピック
+// トピック（管理者パネルのボタンから）
+adminTopicBtn && adminTopicBtn.addEventListener('click', () => {
+  const open = topicRow.style.display === 'flex';
+  topicRow.style.display = open ? 'none' : 'flex';
+  if (!open) topicInput.focus();
+});
 topicBtn.addEventListener('click', () => {
   const open = topicRow.style.display === 'flex';
   topicRow.style.display = open ? 'none' : 'flex';
@@ -544,8 +508,12 @@ topicSave.addEventListener('click', async () => {
 });
 topicInput.addEventListener('keydown', e => { if(e.key==='Enter') topicSave.click(); });
 
-// ラベル編集
-labelBtn.addEventListener('click', () => {
+// ラベル編集（管理者パネルのボタンから）
+adminLabelBtn && adminLabelBtn.addEventListener('click', () => {
+  const open = labelArea.style.display === 'flex';
+  labelArea.style.display = open ? 'none' : 'flex';
+});
+labelBtn && labelBtn.addEventListener('click', () => {
   const open = labelArea.style.display === 'flex';
   labelArea.style.display = open ? 'none' : 'flex';
 });
@@ -558,6 +526,15 @@ labelSave.addEventListener('click', async () => {
   applyLabels(top, bottom, left, right);
   labelArea.style.display = 'none';
   await fetchGAS(apiUrl, { action: 'setlabel', top, bottom, left, right });
+});
+
+// 全データリセット
+fullResetBtn && fullResetBtn.addEventListener('click', async () => {
+  if (!confirm('全員の回答・テーマ・ラベルをリセットします。よろしいですか？')) return;
+  await fetchGAS(apiUrl, { action: 'reset' });
+  opinions = {};
+  render();
+  setAdminMode(false);
 });
 
 function applyLabels(top, bottom, left, right) {
