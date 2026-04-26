@@ -291,6 +291,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
       <button class="btn-sm" id="admin-label-btn" style="border-color:var(--accent);color:var(--accent)">✏️ ラベル編集</button>
       <button class="btn-mode to-hidden" id="mode-btn">🙈 非公開モードにする</button>
       <button class="btn-reset" id="full-reset-btn">⚠️ 全データリセット</button>
+      <button class="btn-sm" id="admin-logout-btn" style="border-color:var(--muted);color:var(--muted)">🔓 管理者モードを解除</button>
     </div>
   </div>
 
@@ -579,6 +580,12 @@ fullResetBtn && fullResetBtn.addEventListener('click', async () => {
   await fetchGAS(apiUrl, { action: 'reset' });
   opinions = {};
   applyMode('live');
+  setAdminMode(false);
+});
+
+// 管理者モード解除
+const adminLogoutBtn = $('admin-logout-btn');
+adminLogoutBtn && adminLogoutBtn.addEventListener('click', () => {
   setAdminMode(false);
 });
 
