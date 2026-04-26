@@ -45,7 +45,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 #login{display:none;text-align:center}
 
 /* メイン */
-#main{display:none;width:100%;max-width:1400px;flex-direction:column;gap:12px}
+#main{display:none;width:100%;max-width:min(1400px,calc(100vw - 24px));flex-direction:column;gap:12px}
 
 .hdr{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 18px}
 .hdr-title{font-size:14px;font-weight:600}
@@ -85,8 +85,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .lbl-right{color:var(--accent)}
 
 #canvas2d{
-  flex:1;position:relative;
+  flex:1;position:relative;min-width:0;
   aspect-ratio:4/3;
+  max-height:calc(100vh - 260px);
   background:var(--surface2);
   border:1.5px solid var(--border);
   border-radius:16px;
