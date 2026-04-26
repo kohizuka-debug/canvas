@@ -644,7 +644,8 @@ async function fetchGAS(url, params) {
 // ============================================================
 async function poll() {
   try {
-    const data = await fetchGAS(apiUrl, { action: 'get' });
+    const params = isAdmin ? { action: 'get', admin: '1' } : { action: 'get' };
+    const data = await fetchGAS(apiUrl, params);
     if (!data || !data.ok) throw new Error('invalid');
 
     // ラベル・トピック・モード反映
