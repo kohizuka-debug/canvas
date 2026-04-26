@@ -141,9 +141,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .mode-banner.hidden-mode{background:rgba(247,196,79,.12);border:1px solid rgba(247,196,79,.35);color:#f7c44f}
 .mode-banner.live-mode{background:rgba(79,201,122,.1);border:1px solid rgba(79,201,122,.3);color:var(--green)}
 /* モード切替ボタン */
-.btn-mode{border:none;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:600;padding:8px 16px;cursor:pointer;transition:opacity .15s}
-.btn-mode.to-live{background:var(--green);color:#fff}
-.btn-mode.to-hidden{background:rgba(247,196,79,.2);border:1px solid rgba(247,196,79,.5);color:#f7c44f}
+.btn-mode{border:2px solid transparent;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:600;padding:8px 16px;cursor:pointer;transition:all .15s}
+.btn-mode.to-live{background:var(--green);color:#fff;border-color:var(--green)}
+.btn-mode.to-hidden{background:rgba(247,196,79,.15);border-color:#f7c44f;color:#f7c44f}
+.btn-mode.to-live:hover{opacity:.85}
+.btn-mode.to-hidden:hover{background:rgba(247,196,79,.3)}
 /* 管理者パスコード */
 .passcode-wrap{display:flex;align-items:center;gap:6px}
 .passcode-wrap input{width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--mono);font-size:14px;padding:5px 10px;outline:none;text-align:center;letter-spacing:4px}
@@ -287,7 +289,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     <div class="admin-actions">
       <button class="btn-sm" id="admin-topic-btn" style="border-color:var(--accent);color:var(--accent)">✏️ テーマ編集</button>
       <button class="btn-sm" id="admin-label-btn" style="border-color:var(--accent);color:var(--accent)">✏️ ラベル編集</button>
-      <button class="btn-mode to-hidden" id="mode-btn">👁 非公開モードに切替</button>
+      <button class="btn-mode to-hidden" id="mode-btn">🙈 非公開モードにする</button>
       <button class="btn-reset" id="full-reset-btn">⚠️ 全データリセット</button>
     </div>
   </div>
@@ -398,10 +400,10 @@ function applyMode(mode) {
   // 管理者ボタンのラベル更新
   if (modeBtn) {
     if (mode === 'hidden') {
-      modeBtn.textContent = '✅ 全員に公開する';
+      modeBtn.textContent = '👀 全員に公開する';
       modeBtn.className = 'btn-mode to-live';
     } else {
-      modeBtn.textContent = '👁 非公開モードに切替';
+      modeBtn.textContent = '🙈 非公開モードにする';
       modeBtn.className = 'btn-mode to-hidden';
     }
   }
