@@ -71,7 +71,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .topic-edit-row input:focus{border-color:var(--accent)}
 
 /* 2Dキャンバス */
-.canvas2d-wrap{position:relative;margin:0 auto}
+.canvas2d-wrap{position:relative;margin:0 auto;display:flex;flex-direction:column;align-items:center}
 
 /* 上下ラベル */
 .lbl-top,.lbl-bottom{text-align:center;font-size:24px;font-weight:600;padding:4px 0;letter-spacing:.02em}
@@ -79,7 +79,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .lbl-bottom{color:var(--red);margin-top:4px}
 
 /* 左右ラベルと本体を横並び */
-.canvas2d-row{display:flex;align-items:stretch;gap:8px;height:calc(100vh - 300px);max-height:700px}
+.canvas2d-row{display:flex;align-items:stretch;justify-content:center;gap:8px;height:calc(100vh - 300px);max-height:700px}
 .lbl-side{font-size:24px;font-weight:600;writing-mode:vertical-lr;text-orientation:mixed;padding:6px 2px;border-radius:6px;letter-spacing:.05em;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .lbl-left{color:var(--accent)}
 .lbl-right{color:var(--accent)}
@@ -108,7 +108,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .grid-h{left:0;width:100%;height:1px}
 .grid-v{top:0;height:100%;width:1px}
 
-#dots2d{position:absolute;inset:0;pointer-events:none}
+#dots2d{position:absolute;inset:0;pointer-events:none;transition:opacity .3s}
 
 /* ドット */
 .dw2{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;transition:left .28s cubic-bezier(.4,0,.2,1),top .28s cubic-bezier(.4,0,.2,1)}
@@ -383,6 +383,7 @@ const modeBtn       = $('mode-btn');
 const ADMIN_CODE = '0000';
 let isAdmin = sessionStorage.getItem('oc_admin') === '1';
 let currentMode = 'live'; // 'live' | 'hidden'
+let modeReady = false; // 初回poll完了前はdots非表示
 
 function applyMode(mode) {
   currentMode = mode;
@@ -653,9 +654,12 @@ async function poll() {
       topicDisp.classList.toggle('empty', !data.topic);
       if (!topicInput.matches(':focus')) topicInput.value = data.topic || '';
     }
-    if (data.mode && data.mode !== currentMode) {
-      applyMode(data.mode);
+    // モードを常に同期（初回含む）
+    const serverMode = data.mode || 'live';
+    if (!modeReady || serverMode !== currentMode) {
+      applyMode(serverMode);
     }
+    modeReady = true;
 
     // 意見マージ
     const next = {};
@@ -692,6 +696,8 @@ function color(uid) {
 }
 
 function render() {
+  // モード未確定の場合は全ドット非表示
+  dots2d.style.opacity = modeReady ? '1' : '0';
   const allEntries = Object.entries(opinions).filter(([,o]) => o?.x != null && o?.y != null);
   // 非公開モード（非管理者）は自分のドットのみ表示
   const entries = (currentMode === 'hidden' && !isAdmin)
