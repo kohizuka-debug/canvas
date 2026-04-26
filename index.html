@@ -79,15 +79,16 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .lbl-bottom{color:var(--red);margin-top:4px}
 
 /* 左右ラベルと本体を横並び */
-.canvas2d-row{display:flex;align-items:center;gap:8px}
-.lbl-side{font-size:24px;font-weight:600;writing-mode:vertical-lr;text-orientation:mixed;padding:6px 2px;border-radius:6px;letter-spacing:.05em;flex-shrink:0}
+.canvas2d-row{display:flex;align-items:stretch;gap:8px;height:calc(100vh - 300px);max-height:700px}
+.lbl-side{font-size:24px;font-weight:600;writing-mode:vertical-lr;text-orientation:mixed;padding:6px 2px;border-radius:6px;letter-spacing:.05em;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .lbl-left{color:var(--accent)}
 .lbl-right{color:var(--accent)}
 
 #canvas2d{
-  flex:1;position:relative;min-width:0;
+  flex:none;position:relative;
+  height:100%;
+  width:auto;
   aspect-ratio:4/3;
-  max-height:calc(100vh - 260px);
   background:var(--surface2);
   border:1.5px solid var(--border);
   border-radius:16px;
