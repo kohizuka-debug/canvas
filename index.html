@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>意見分布キャンバス</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;
+  --border:#2d3250;--accent:#4f8ef7;--text:#e8eaf6;
+  --muted:#7b82a8;--green:#4fc97a;--red:#f7614f;
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+
+/* ── 共通カード ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:36px 32px;width:100%;max-width:460px}
+.card-title{font-size:20px;font-weight:600;letter-spacing:-.3px;margin-bottom:6px}
+.card-sub{color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:22px}
+.field{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--mono);font-size:15px;padding:13px 14px;outline:none;transition:border-color .2s;margin-bottom:12px}
+.field:focus{border-color:var(--accent)}
+.field::placeholder{color:var(--muted);font-size:13px;font-family:var(--font)}
+.btn{width:100%;background:var(--accent);border:none;border-radius:10px;color:#fff;font-family:var(--font);font-size:15px;font-weight:600;padding:13px;cursor:pointer;transition:opacity .15s,transform .1s}
+.btn:hover{opacity:.88}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.err-msg{color:var(--red);font-size:12px;margin-top:10px;line-height:1.7;white-space:pre-line;display:none}
+
+/* ── 管理者セットアップ ── */
+#admin{display:none;text-align:center}
+#admin .card-title{margin-bottom:4px}
+.step-list{text-align:left;margin-bottom:20px}
+.step-item{display:flex;gap:10px;margin-bottom:12px;align-items:flex-start}
+.sn{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.si{font-size:13px;color:var(--muted);line-height:1.65}
+.si b{color:var(--text)}
+.si code{font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;color:var(--accent)}
+.si .warn{display:block;margin-top:5px;font-size:11px;padding:5px 9px;background:rgba(79,142,247,.07);border-left:2px solid var(--accent);border-radius:0 5px 5px 0}
+.share-box{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;display:none}
+.share-box label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px}
+#share-url-text{font-family:var(--mono);font-size:11px;color:var(--accent);word-break:break-all;line-height:1.5;display:block;margin-bottom:10px}
+.btn-copy{background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--font);font-size:13px;padding:7px 16px;cursor:pointer;transition:border-color .2s}
+.btn-copy:hover{border-color:var(--accent)}
+.btn-copy.copied{color:var(--green);border-color:var(--green)}
+
+/* ── ログイン ── */
+#login{display:none;text-align:center}
+
+/* ── メイン ── */
+#main{display:none;width:100%;max-width:940px;flex-direction:column;gap:14px}
+
+.hdr{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 20px}
+.hdr-title{font-size:15px;font-weight:600}
+.hdr-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.hdr-sub b{color:var(--accent)}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.badge{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:14px;font-weight:600;font-family:var(--mono);color:var(--accent)}
+.dot-live{width:7px;height:7px;background:var(--green);border-radius:50%;animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+#sync-st{font-size:11px;color:var(--muted);font-family:var(--mono);transition:color .3s}
+#sync-st.ok{color:var(--green)}
+#sync-st.err{color:var(--red)}
+
+.canvas-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px 22px 20px}
+
+/* topic */
+.topic-row{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+#topic-disp{font-size:15px;font-weight:600;flex:1;letter-spacing:-.2px}
+#topic-disp.empty{color:var(--muted);font-weight:400;font-size:13px}
+.btn-sm{background:none;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-family:var(--font);font-size:12px;padding:5px 12px;cursor:pointer;white-space:nowrap;transition:border-color .2s,color .2s}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent)}
+.topic-edit-row{display:none;gap:8px;margin-top:-10px;margin-bottom:14px}
+.topic-edit-row input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:14px;padding:8px 12px;outline:none;transition:border-color .2s}
+.topic-edit-row input:focus{border-color:var(--accent)}
+
+/* axis */
+.axis-labels{display:flex;justify-content:space-between;margin-bottom:8px}
+.albl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:4px 12px;border-radius:6px}
+.albl-r{background:rgba(247,97,79,.1);color:var(--red)}
+.albl-g{background:rgba(79,201,122,.1);color:var(--green)}
+
+#axis{position:relative;height:84px;background:var(--surface2);border:1.5px solid var(--border);border-radius:42px;cursor:crosshair;transition:border-color .2s;overflow:visible}
+#axis:hover{border-color:var(--accent)}
+#axis::after{content:'';position:absolute;left:50%;top:12%;width:1px;height:76%;background:var(--border);transform:translateX(-50%)}
+#dots{position:absolute;inset:0;pointer-events:none}
+
+.dw{position:absolute;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;transition:left .32s cubic-bezier(.4,0,.2,1)}
+.dl{position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;font-weight:500;font-family:var(--mono);padding:3px 8px;border-radius:6px;pointer-events:none}
+.dl.me{color:#fff;font-size:12px;padding:4px 10px}
+.dl.other{background:var(--surface);border:1px solid var(--border);color:var(--muted)}
+.dc{width:20px;height:20px;border-radius:50%;border:3px solid var(--bg)}
+.dc.me{width:26px;height:26px}
+.dc.other{background:var(--muted);opacity:.65}
+
+#instr{text-align:center;color:var(--muted);font-size:13px;margin-top:10px}
+
+/* histogram */
+.hist-wrap{margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.hist-hdr{display:flex;justify-content:space-between;margin-bottom:8px}
+.hist-ttl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+#hist-stat{font-size:11px;color:var(--muted);font-family:var(--mono)}
+#histogram{display:flex;align-items:flex-end;gap:3px;height:44px}
+.hbar{flex:1;border-radius:3px 3px 0 0;min-height:3px;transition:height .3s}
+.hscale{display:flex;justify-content:space-between;margin-top:4px}
+.hscale span{font-size:10px;color:var(--muted)}
+
+/* footer */
+.footer{display:flex;justify-content:space-between;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 18px}
+.btn-del{background:none;border:1px solid rgba(247,97,79,.25);border-radius:8px;color:var(--red);font-family:var(--font);font-size:13px;padding:7px 14px;cursor:pointer;display:none}
+.btn-del:hover{background:rgba(247,97,79,.1)}
+
+/* ripple */
+@keyframes rip{from{transform:translate(-50%,-50%) scale(0);opacity:.7}to{transform:translate(-50%,-50%) scale(5);opacity:0}}
+.rip{position:absolute;width:24px;height:24px;background:rgba(79,142,247,.35);border-radius:50%;pointer-events:none;animation:rip .45s ease-out forwards;z-index:99}
+</style>
+</head>
+<body>
+
+<!-- ① 管理者セットアップ（URLにAPIが未設定の場合のみ表示） -->
+<div id="admin" class="card">
+  <div style="font-size:34px;margin-bottom:10px">⚙️</div>
+  <div class="card-title">管理者セットアップ</div>
+  <p class="card-sub">これは管理者だけが1回やればOK。<br>参加者にはURLを送るだけです。</p>
+
+  <div class="step-list">
+    <div class="step-item">
+      <div class="sn">1</div>
+      <div class="si">
+        <b><a href="https://sheets.new" target="_blank" style="color:var(--accent)">sheets.new</a> でスプレッドシートを新規作成</b>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="sn">2</div>
+      <div class="si">
+        <b>「拡張機能」→「Apps Script」を開く</b>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="sn">3</div>
+      <div class="si">
+        <b><code>apps-script-backend-v2.gs</code> の中身を貼り付けて保存</b>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="sn">4</div>
+      <div class="si">
+        <b>「デプロイ」→「新しいデプロイ」</b><br>
+        種類: ウェブアプリ ／ 実行: 自分 ／ アクセス: <b style="color:var(--accent)">全員</b>
+        <span class="warn">⚠️ 初回の「許可」ダイアログ →「詳細」→「安全でないページへ移動」→「許可」まで進む</span>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="sn">5</div>
+      <div class="si">
+        <b>デプロイURLを下に貼り付ける</b>
+      </div>
+    </div>
+  </div>
+
+  <input class="field" style="font-size:12px;font-family:var(--mono)" type="text" id="gas-input"
+    placeholder="https://script.google.com/macros/s/XXXXXX/exec">
+  <button class="btn" id="connect-btn">接続テストして参加URLを生成 →</button>
+  <div class="err-msg" id="admin-err"></div>
+
+  <!-- 生成された共有URL -->
+  <div class="share-box" id="share-box">
+    <label>👥 参加者に共有するURL</label>
+    <span id="share-url-text"></span>
+    <button class="btn-copy" id="copy-btn">URLをコピー</button>
+  </div>
+</div>
+
+<!-- ② 参加者ログイン -->
+<div id="login" class="card" style="text-align:center">
+  <div style="font-size:36px;margin-bottom:10px">📊</div>
+  <div class="card-title">意見分布キャンバス</div>
+  <p class="card-sub">名前または番号を入力して参加してください。<br>別の端末からも同時にリアルタイム参加できます。</p>
+  <input class="field" style="text-align:center;font-size:18px" id="name-input"
+    type="text" placeholder="例: 田中、01、Aチーム" maxlength="12">
+  <button class="btn" id="join-btn">参加する →</button>
+</div>
+
+<!-- ③ メイン -->
+<div id="main">
+  <div class="hdr">
+    <div>
+      <div class="hdr-title">意見分布キャンバス</div>
+      <div class="hdr-sub">参加中: <b id="my-name-lbl">—</b></div>
+    </div>
+    <div class="hdr-right">
+      <div id="sync-st">同期中...</div>
+      <div class="badge"><div class="dot-live"></div><span id="count-lbl">0</span> 人</div>
+    </div>
+  </div>
+
+  <div class="canvas-card">
+    <div class="topic-row">
+      <div id="topic-disp" class="empty">（質問・テーマ未設定）</div>
+      <button class="btn-sm" id="topic-btn">✏️ 編集</button>
+    </div>
+    <div class="topic-edit-row" id="topic-row">
+      <input type="text" id="topic-input" placeholder="例: このプロジェクトに賛成ですか？" maxlength="60">
+      <button class="btn-sm" id="topic-save">設定</button>
+    </div>
+
+    <div class="axis-labels">
+      <div class="albl albl-r">◀ 反対</div>
+      <div class="albl albl-g">賛成 ▶</div>
+    </div>
+    <div id="axis"><div id="dots"></div></div>
+    <div id="instr">← バーをクリックして意見をプロットしてください →</div>
+
+    <div class="hist-wrap">
+      <div class="hist-hdr">
+        <div class="hist-ttl">分布ヒストグラム</div>
+        <div id="hist-stat"></div>
+      </div>
+      <div id="histogram"></div>
+      <div class="hscale"><span>反対</span><span>中立</span><span>賛成</span></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <button class="btn-sm" id="reset-btn">← 名前を変更</button>
+    <button class="btn-del" id="del-btn">× 自分のプロットを削除</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// URL ハッシュに GAS URL を埋め込む仕組み
+//   管理者: セットアップ → 生成URLを参加者に配布
+//   参加者: そのURLを開くだけ → 名前入力だけ
+// ============================================================
+
+const K_UID  = 'oc_uid';
+const K_NAME = 'oc_name';
+const K_TOPIC= 'oc_topic';
+const POLL_MS = 2500;
+
+// URLハッシュからAPIUrlを取得
+function getApiFromHash() {
+  try {
+    const h = location.hash.slice(1);
+    if (!h) return '';
+    const decoded = atob(h);
+    if (decoded.startsWith('https://script.google.com')) return decoded;
+    return '';
+  } catch(e) { return ''; }
+}
+
+let apiUrl = getApiFromHash();
+let myUID  = localStorage.getItem(K_UID) || '';
+let myName = localStorage.getItem(K_NAME) || '';
+let opinions = {};
+let pollTimer = null;
+let errCount  = 0;
+
+if (!myUID) {
+  myUID = 'u' + Math.random().toString(36).slice(2,9) + Date.now().toString(36);
+  localStorage.setItem(K_UID, myUID);
+}
+
+// ── 要素 ──
+const $ = id => document.getElementById(id);
+const adminEl   = $('admin');
+const loginEl   = $('login');
+const mainEl    = $('main');
+const gasInput  = $('gas-input');
+const connectBtn= $('connect-btn');
+const adminErr  = $('admin-err');
+const shareBox  = $('share-box');
+const shareUrlText = $('share-url-text');
+const copyBtn   = $('copy-btn');
+const nameInput = $('name-input');
+const joinBtn   = $('join-btn');
+const axisEl    = $('axis');
+const dotsEl    = $('dots');
+const countLbl  = $('count-lbl');
+const myNameLbl = $('my-name-lbl');
+const delBtn    = $('del-btn');
+const resetBtn  = $('reset-btn');
+const instrEl   = $('instr');
+const histEl    = $('histogram');
+const histStat  = $('hist-stat');
+const syncSt    = $('sync-st');
+const topicDisp = $('topic-disp');
+const topicInput= $('topic-input');
+const topicRow  = $('topic-row');
+const topicBtn  = $('topic-btn');
+const topicSave = $('topic-save');
+
+// ── 画面振り分け ──
+(function init() {
+  if (!apiUrl) {
+    // 管理者セットアップ
+    adminEl.style.display = 'block';
+    return;
+  }
+  if (!myName) {
+    loginEl.style.display = 'block';
+    return;
+  }
+  showMain();
+})();
+
+// ============================================================
+// 管理者セットアップ
+// ============================================================
+connectBtn.addEventListener('click', async () => {
+  const url = gasInput.value.trim();
+  if (!url.includes('script.google.com')) {
+    showAdminErr('Google Apps ScriptのURLを貼ってください。\nhttps://script.google.com/macros/s/.../exec の形式です。');
+    return;
+  }
+  connectBtn.disabled = true;
+  connectBtn.textContent = '接続テスト中...';
+  adminErr.style.display = 'none';
+  shareBox.style.display = 'none';
+
+  try {
+    const data = await fetchGAS(url, { action: 'get' });
+    if (!data || !data.ok) throw new Error(data ? data.error : '応答なし');
+
+    // 成功 → ハッシュ付き共有URLを生成
+    const hash = btoa(url);
+    const shareUrl = location.href.split('#')[0] + '#' + hash;
+    shareUrlText.textContent = shareUrl;
+    shareBox.style.display = 'block';
+    connectBtn.textContent = '✓ 接続成功！URLを参加者に共有してください';
+    connectBtn.style.background = 'var(--green)';
+  } catch(e) {
+    showAdminErr(
+      '接続に失敗しました。\n\n確認事項:\n' +
+      '• URLが正しいか（exec で終わるURL）\n' +
+      '• デプロイ時に「アクセス: 全員」を選んだか\n' +
+      '• 初回の「許可」ダイアログを完了したか\n\n' +
+      'エラー詳細: ' + e.message
+    );
+    connectBtn.disabled = false;
+    connectBtn.textContent = '接続テストして参加URLを生成 →';
+  }
+});
+
+copyBtn.addEventListener('click', () => {
+  const url = shareUrlText.textContent;
+  navigator.clipboard.writeText(url).then(() => {
+    copyBtn.textContent = '✓ コピーしました！';
+    copyBtn.classList.add('copied');
+    setTimeout(() => {
+      copyBtn.textContent = 'URLをコピー';
+      copyBtn.classList.remove('copied');
+    }, 2000);
+  });
+});
+
+function showAdminErr(msg) {
+  adminErr.style.display = 'block';
+  adminErr.textContent = msg;
+}
+
+// ============================================================
+// ログイン
+// ============================================================
+joinBtn.addEventListener('click', () => {
+  const n = nameInput.value.trim();
+  if (!n) { nameInput.focus(); return; }
+  myName = n;
+  localStorage.setItem(K_NAME, n);
+  loginEl.style.display = 'none';
+  showMain();
+});
+nameInput.addEventListener('keydown', e => { if(e.key==='Enter') joinBtn.click(); });
+
+// ============================================================
+// メイン
+// ============================================================
+function showMain() {
+  mainEl.style.display = 'flex';
+  myNameLbl.textContent = myName;
+  const t = localStorage.getItem(K_TOPIC);
+  if (t) { topicDisp.textContent = t; topicDisp.classList.remove('empty'); topicInput.value = t; }
+  startPolling();
+}
+
+resetBtn.addEventListener('click', () => {
+  stopPolling();
+  localStorage.removeItem(K_NAME);
+  location.reload();
+});
+
+delBtn.addEventListener('click', async () => {
+  delete opinions[myUID];
+  render();
+  await fetchGAS(apiUrl, { action: 'delete', uid: myUID });
+});
+
+// ── トピック ──
+topicBtn.addEventListener('click', () => {
+  const open = topicRow.style.display === 'flex';
+  topicRow.style.display = open ? 'none' : 'flex';
+  if (!open) topicInput.focus();
+});
+topicSave.addEventListener('click', () => {
+  const t = topicInput.value.trim();
+  if (t) {
+    topicDisp.textContent = t;
+    topicDisp.classList.remove('empty');
+    localStorage.setItem(K_TOPIC, t);
+  } else {
+    topicDisp.textContent = '（質問・テーマ未設定）';
+    topicDisp.classList.add('empty');
+    localStorage.removeItem(K_TOPIC);
+  }
+  topicRow.style.display = 'none';
+});
+topicInput.addEventListener('keydown', e => { if(e.key==='Enter') topicSave.click(); });
+
+// ── 軸クリック ──
+axisEl.addEventListener('click', async e => {
+  const rect = axisEl.getBoundingClientRect();
+  const rawX = (e.clientX - rect.left) / rect.width;
+  const x = Math.max(0.01, Math.min(0.99, rawX));
+
+  const rip = document.createElement('div');
+  rip.className = 'rip';
+  rip.style.left = `${rawX*100}%`;
+  rip.style.top  = '50%';
+  axisEl.appendChild(rip);
+  setTimeout(() => rip.remove(), 450);
+
+  const ts = Date.now();
+  opinions[myUID] = { uid: myUID, name: myName, x, ts };
+  render();
+  await fetchGAS(apiUrl, { action: 'set', uid: myUID, name: myName, x: x.toFixed(4), ts });
+});
+
+axisEl.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  axisEl.dispatchEvent(new MouseEvent('click', { clientX: t.clientX, clientY: t.clientY }));
+}, { passive: false });
+
+// ============================================================
+// API（GETのみ）
+// ============================================================
+async function fetchGAS(url, params) {
+  const qs = new URLSearchParams(params).toString();
+  const res = await fetch(`${url}?${qs}`, { method: 'GET', redirect: 'follow' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+// ============================================================
+// ポーリング
+// ============================================================
+async function poll() {
+  try {
+    const data = await fetchGAS(apiUrl, { action: 'get' });
+    if (!data || !data.ok) throw new Error('invalid');
+
+    const next = {};
+    (data.opinions || []).forEach(op => { next[op.uid] = op; });
+    if (opinions[myUID] && (!next[myUID] || opinions[myUID].ts > (next[myUID]?.ts ?? 0))) {
+      next[myUID] = opinions[myUID];
+    }
+    opinions = next;
+    render();
+
+    errCount = 0;
+    syncSt.textContent = '✓ 同期済み';
+    syncSt.className = 'sync-st ok';
+  } catch(e) {
+    errCount++;
+    syncSt.textContent = `× エラー(${errCount})`;
+    syncSt.className = 'sync-st err';
+  }
+}
+
+function startPolling() { poll(); pollTimer = setInterval(poll, POLL_MS); }
+function stopPolling()  { if (pollTimer) clearInterval(pollTimer); }
+
+// ============================================================
+// 描画
+// ============================================================
+const COLORS = ['#4f8ef7','#f74f8e','#4fc97a','#f7c44f','#af4ff7','#4ff7e8','#f7914f','#a0f74f','#f74fce','#4ff7b0','#b04ff7','#f7d44f'];
+const uidColor = {};
+let ci = 0;
+function color(uid) {
+  if (uid === myUID) return '#4f8ef7';
+  if (!uidColor[uid]) uidColor[uid] = COLORS[ci++ % COLORS.length];
+  return uidColor[uid];
+}
+
+function render() {
+  const entries = Object.entries(opinions).filter(([,o]) => o?.x != null);
+  countLbl.textContent = entries.length;
+  delBtn.style.display = opinions[myUID] ? 'block' : 'none';
+  instrEl.textContent  = opinions[myUID]
+    ? '← クリックして位置を変更できます →'
+    : '← バーをクリックして意見をプロットしてください →';
+
+  entries.sort(([a],[b]) => a===myUID ? 1 : b===myUID ? -1 : 0);
+  dotsEl.innerHTML = '';
+  entries.forEach(([uid, op]) => {
+    const isMe = uid === myUID;
+    const col  = color(uid);
+    const w = document.createElement('div'); w.className='dw';
+    w.style.left   = `${op.x*100}%`;
+    w.style.zIndex = isMe ? '40' : '10';
+
+    const l = document.createElement('div'); l.className=`dl ${isMe?'me':'other'}`;
+    if (isMe) l.style.background = col;
+    l.textContent = op.name;
+
+    const c = document.createElement('div'); c.className=`dc ${isMe?'me':'other'}`;
+    c.style.background = col;
+    if (isMe) c.style.boxShadow = `0 0 0 4px ${col}33`;
+
+    w.appendChild(l); w.appendChild(c); dotsEl.appendChild(w);
+  });
+
+  const bins = new Array(10).fill(0);
+  entries.forEach(([,op]) => bins[Math.min(9,Math.floor(op.x*10))]++);
+  const maxB = Math.max(1, ...bins);
+  histEl.innerHTML = bins.map((v,i) => {
+    const t=i/9, r=Math.round(247-(247-79)*t), g=Math.round(97+(201-97)*t), b=Math.round(79+(122-79)*t);
+    return `<div class="hbar" style="height:${Math.max(3,(v/maxB)*100)}%;background:rgb(${r},${g},${b})" title="${v}人"></div>`;
+  }).join('');
+
+  if (entries.length > 0) {
+    const avg = entries.reduce((s,[,o])=>s+o.x,0)/entries.length;
+    const lbl = avg>0.57?'賛成寄り 📗':avg<0.43?'反対寄り 📕':'中立的 📘';
+    histStat.textContent = `平均 ${Math.round(avg*100)}%　${lbl}`;
+  } else { histStat.textContent=''; }
+}
+</script>
+</body>
+</html>
