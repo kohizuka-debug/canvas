@@ -80,8 +80,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
 /* 左右ラベルと本体を横並び */
 .canvas2d-row{display:flex;align-items:center;gap:8px}
-.lbl-side{font-size:12px;font-weight:600;writing-mode:vertical-rl;text-orientation:mixed;padding:6px 2px;border-radius:6px;letter-spacing:.05em;flex-shrink:0}
-.lbl-left{color:var(--accent);transform:rotate(180deg)}
+.lbl-side{font-size:12px;font-weight:600;writing-mode:vertical-lr;text-orientation:mixed;padding:6px 2px;border-radius:6px;letter-spacing:.05em;flex-shrink:0}
+.lbl-left{color:var(--accent)}
 .lbl-right{color:var(--accent)}
 
 #canvas2d{
@@ -206,9 +206,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
     <!-- 2Dキャンバス本体 -->
     <div class="canvas2d-wrap">
-      <div class="lbl-top" id="lbl-top">↑ 心地よい</div>
+      <div class="lbl-top" id="lbl-top"></div>
       <div class="canvas2d-row">
-        <div class="lbl-side lbl-left" id="lbl-left">← 近い</div>
+        <div class="lbl-side lbl-left" id="lbl-left">✖</div>
         <div id="canvas2d">
           <!-- グリッド -->
           <div class="grid-line grid-h" style="top:25%"></div>
@@ -217,9 +217,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
           <div class="grid-line grid-v" style="left:75%"></div>
           <div id="dots2d"></div>
         </div>
-        <div class="lbl-side lbl-right" id="lbl-right">遠い →</div>
+        <div class="lbl-side lbl-right" id="lbl-right">○</div>
       </div>
-      <div class="lbl-bottom" id="lbl-bottom">不快 ↓</div>
+      <div class="lbl-bottom" id="lbl-bottom"></div>
     </div>
 
     <div id="instr">← キャンバスをクリックして自分の感覚をプロットしてください →</div>
@@ -439,10 +439,10 @@ labelBtn.addEventListener('click', () => {
 });
 labelCancel.addEventListener('click', () => { labelArea.style.display = 'none'; });
 labelSave.addEventListener('click', async () => {
-  const top    = lblTopInput.value.trim()    || '↑ 心地よい';
-  const bottom = lblBottomInput.value.trim() || '不快 ↓';
-  const left   = lblLeftInput.value.trim()   || '← 近い';
-  const right  = lblRightInput.value.trim()  || '遠い →';
+  const top    = lblTopInput.value.trim()    || '';
+  const bottom = lblBottomInput.value.trim() || '';
+  const left   = lblLeftInput.value.trim()   || '✖';
+  const right  = lblRightInput.value.trim()  || '○';
   applyLabels(top, bottom, left, right);
   labelArea.style.display = 'none';
   await fetchGAS(apiUrl, { action: 'setlabel', top, bottom, left, right });
