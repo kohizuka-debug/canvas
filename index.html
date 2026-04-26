@@ -136,6 +136,21 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 /* リップル */
 @keyframes rip{from{transform:translate(-50%,-50%) scale(0);opacity:.7}to{transform:translate(-50%,-50%) scale(5);opacity:0}}
 .rip{position:absolute;width:20px;height:20px;background:rgba(79,142,247,.35);border-radius:50%;pointer-events:none;animation:rip .4s ease-out forwards;z-index:99}
+
+/* リセットモーダル */
+#reset-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center}
+#reset-modal.open{display:flex}
+.modal-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px 24px;width:100%;max-width:320px;text-align:center}
+.modal-card h3{font-size:16px;font-weight:600;margin-bottom:6px}
+.modal-card p{font-size:12px;color:var(--muted);margin-bottom:18px;line-height:1.7}
+.passcode-row{display:flex;justify-content:center;gap:10px;margin-bottom:16px}
+.passcode-digit{width:44px;height:54px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--mono);font-size:22px;font-weight:600;text-align:center;outline:none;transition:border-color .2s}
+.passcode-digit:focus{border-color:var(--accent)}
+.modal-actions{display:flex;gap:8px}
+.modal-actions button{flex:1;border:none;border-radius:9px;padding:11px;font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer}
+.btn-modal-cancel{background:var(--surface2);color:var(--muted)}
+.btn-modal-ok{background:var(--red);color:#fff}
+#reset-msg{font-size:12px;color:var(--red);margin-top:10px;min-height:16px}
 </style>
 </head>
 <body>
@@ -258,7 +273,27 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
   <div class="footer">
     <button class="btn-sm" id="reset-btn">← 名前を変更</button>
+    <button class="btn-sm" id="admin-reset-btn" style="border-color:rgba(247,97,79,.4);color:var(--red)">🔄 全リセット</button>
     <button class="btn-del" id="del-btn">× 自分のプロットを削除</button>
+  </div>
+</div>
+
+<!-- リセットモーダル -->
+<div id="reset-modal">
+  <div class="modal-card">
+    <h3>🔐 管理者リセット</h3>
+    <p>パスコードを入力すると、全員のプロット・<br>ラベル・テーマをすべてリセットします。</p>
+    <div class="passcode-row">
+      <input class="passcode-digit" id="pc0" type="password" maxlength="1" inputmode="numeric">
+      <input class="passcode-digit" id="pc1" type="password" maxlength="1" inputmode="numeric">
+      <input class="passcode-digit" id="pc2" type="password" maxlength="1" inputmode="numeric">
+      <input class="passcode-digit" id="pc3" type="password" maxlength="1" inputmode="numeric">
+    </div>
+    <div id="reset-msg"></div>
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="btn-modal-cancel" id="modal-cancel">キャンセル</button>
+      <button class="btn-modal-ok" id="modal-ok">リセット実行</button>
+    </div>
   </div>
 </div>
 
@@ -427,6 +462,65 @@ resetBtn.addEventListener('click', () => {
   stopPolling();
   localStorage.removeItem(K_NAME);
   location.reload();
+});
+
+// 全リセットボタン
+const adminResetBtn = $('admin-reset-btn');
+const resetModal    = $('reset-modal');
+const modalCancel   = $('modal-cancel');
+const modalOk       = $('modal-ok');
+const resetMsg      = $('reset-msg');
+const pcInputs      = [0,1,2,3].map(i => $('pc' + i));
+
+adminResetBtn.addEventListener('click', () => {
+  resetModal.classList.add('open');
+  pcInputs.forEach(el => el.value = '');
+  resetMsg.textContent = '';
+  pcInputs[0].focus();
+});
+modalCancel.addEventListener('click', () => {
+  resetModal.classList.remove('open');
+});
+resetModal.addEventListener('click', e => {
+  if (e.target === resetModal) resetModal.classList.remove('open');
+});
+
+// 数字を入れたら自動で次へ
+pcInputs.forEach((el, i) => {
+  el.addEventListener('input', () => {
+    el.value = el.value.replace(/\D/g, '').slice(-1);
+    if (el.value && i < 3) pcInputs[i + 1].focus();
+  });
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Backspace' && !el.value && i > 0) pcInputs[i - 1].focus();
+    if (e.key === 'Enter') modalOk.click();
+  });
+});
+
+modalOk.addEventListener('click', async () => {
+  const passcode = pcInputs.map(el => el.value).join('');
+  if (passcode.length < 4) { resetMsg.textContent = '4桁入力してください'; return; }
+  modalOk.disabled = true;
+  modalOk.textContent = '処理中...';
+  resetMsg.textContent = '';
+  try {
+    const data = await fetchGAS(apiUrl, { action: 'reset', passcode });
+    if (!data.ok) throw new Error(data.error || 'エラー');
+    // UI側もリセット
+    opinions = {};
+    applyLabels('', '', '✖', '○');
+    topicDisp.textContent = '（質問・テーマ未設定）';
+    topicDisp.classList.add('empty');
+    topicInput.value = '';
+    render();
+    resetModal.classList.remove('open');
+  } catch(e) {
+    resetMsg.textContent = e.message;
+    pcInputs.forEach(el => el.value = '');
+    pcInputs[0].focus();
+  }
+  modalOk.disabled = false;
+  modalOk.textContent = 'リセット実行';
 });
 
 delBtn.addEventListener('click', async () => {
