@@ -148,19 +148,21 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   <div class="step-list">
     <div class="step-item"><div class="sn">1</div><div class="si"><b><a href="https://sheets.new" target="_blank" style="color:var(--accent)">sheets.new</a> でスプレッドシートを新規作成</b></div></div>
     <div class="step-item"><div class="sn">2</div><div class="si"><b>「拡張機能」→「Apps Script」を開く</b></div></div>
-    <div class="step-item"><div class="sn">3</div><div class="si"><b><code>apps-script-backend-v4.gs</code> の中身を貼り付けて保存</b></div></div>
+    <div class="step-item"><div class="sn">3</div><div class="si"><b><code>apps-script-backend-v5.gs</code> の中身を貼り付けて保存</b></div></div>
     <div class="step-item"><div class="sn">4</div><div class="si">
       <b>「デプロイ」→「新しいデプロイ」</b><br>
       種類: ウェブアプリ ／ 実行: 自分 ／ アクセス: <b style="color:var(--accent)">全員</b>
       <span class="warn">⚠️ 初回の「許可」ダイアログ → 「詳細」→「安全でないページへ移動」→「許可」まで進む</span>
     </div></div>
-    <div class="step-item"><div class="sn">5</div><div class="si"><b>このHTMLファイルを公開ホスティングしてそのURLを確認</b><br><span class="warn">⚠️ GitHub Pages等、外部からアクセスできるURLが必要です。</span></div></div>
-    <div class="step-item"><div class="sn">6</div><div class="si"><b>デプロイURLと公開URLを下に入力</b></div></div>
+    <div class="step-item"><div class="sn">5</div><div class="si"><b>デプロイURLを下に貼り付ける</b></div></div>
   </div>
-  <input class="field" style="font-size:12px;font-family:var(--mono)" type="text" id="host-input"
-    placeholder="https://example.com/index.html （このHTMLの公開URL）">
+  <div id="host-warning" style="display:none;font-size:12px;color:var(--red);background:rgba(247,97,79,.08);border:1px solid rgba(247,97,79,.3);border-radius:8px;padding:10px 12px;margin-bottom:12px;line-height:1.7"></div>
   <input class="field" style="font-size:12px;font-family:var(--mono)" type="text" id="gas-input"
-    placeholder="https://script.google.com/macros/s/XXXXXX/exec （GASデプロイURL）">
+    placeholder="https://script.google.com/macros/s/XXXXXX/exec">
+  <div id="host-manual-wrap" style="display:none">
+    <input class="field" style="font-size:12px;font-family:var(--mono)" type="text" id="host-input"
+      placeholder="https://example.com/index.html （このHTMLの公開URL）">
+  </div>
   <button class="btn" id="connect-btn">接続テストして参加URLを生成 →</button>
   <div class="err-msg" id="admin-err"></div>
   <div class="share-box" id="share-box">
@@ -291,13 +293,15 @@ const $ = id => document.getElementById(id);
 const adminEl    = $('admin');
 const loginEl    = $('login');
 const mainEl     = $('main');
-const hostInput  = $('host-input');
-const gasInput   = $('gas-input');
-const connectBtn = $('connect-btn');
-const adminErr   = $('admin-err');
-const shareBox   = $('share-box');
-const shareUrlText = $('share-url-text');
-const copyBtn    = $('copy-btn');
+const hostInput     = $('host-input');
+const hostManualWrap= $('host-manual-wrap');
+const hostWarning   = $('host-warning');
+const gasInput      = $('gas-input');
+const connectBtn    = $('connect-btn');
+const adminErr      = $('admin-err');
+const shareBox      = $('share-box');
+const shareUrlText  = $('share-url-text');
+const copyBtn       = $('copy-btn');
 const nameInput  = $('name-input');
 const joinBtn    = $('join-btn');
 const canvas2d   = $('canvas2d');
@@ -326,9 +330,25 @@ const labelArea  = $('label-area');
 const labelSave  = $('label-save');
 const labelCancel= $('label-cancel');
 
+// 公開URLを自動検出
+function detectHostUrl() {
+  const href = location.href.split('#')[0];
+  const isInternal = href.includes('googleusercontent.com') || href.includes('claude.ai') || href.startsWith('blob:') || href.startsWith('file:');
+  return isInternal ? null : href;
+}
+
 // 画面振り分け
 (function init() {
-  if (!apiUrl) { adminEl.style.display = 'block'; return; }
+  if (!apiUrl) {
+    adminEl.style.display = 'block';
+    // 自動検出できない場合のみ手動入力欄を表示
+    if (!detectHostUrl()) {
+      hostWarning.style.display = 'block';
+      hostWarning.textContent = '⚠️ このページのURLを自動取得できません。\nGitHub PagesのURLをそのままブラウザで開いた状態でセットアップしてください。\n（Claudeのアーティファクト上では動作しません）\n\n今すぐ設定する場合は、下に公開URLを手入力してください。';
+      hostManualWrap.style.display = 'block';
+    }
+    return;
+  }
   if (!myName) { loginEl.style.display = 'block'; return; }
   showMain();
 })();
@@ -338,17 +358,15 @@ const labelCancel= $('label-cancel');
 // ============================================================
 connectBtn.addEventListener('click', async () => {
   const url     = gasInput.value.trim();
-  const hostUrl = hostInput.value.trim();
+  const autoUrl = detectHostUrl();
+  const hostUrl = autoUrl || (hostInput ? hostInput.value.trim() : '');
+
   if (!url.includes('script.google.com')) {
     showAdminErr('GASのURLを貼ってください。\nhttps://script.google.com/macros/s/.../exec の形式です。');
     return;
   }
   if (!hostUrl || !hostUrl.startsWith('http')) {
-    showAdminErr('このHTMLファイルの公開URLを入力してください。\n例: https://example.com/index.html');
-    return;
-  }
-  if (hostUrl.includes('googleusercontent.com') || hostUrl.includes('claude.ai')) {
-    showAdminErr('ClaudeのURLは内部URLです。GitHub Pages等の公開URLを入力してください。');
+    showAdminErr('公開URLを入力してください。\n例: https://ユーザー名.github.io/canvas/');
     return;
   }
   connectBtn.disabled = true;
