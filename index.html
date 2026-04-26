@@ -372,11 +372,6 @@ const ADMIN_CODE = '0000';
 let isAdmin = sessionStorage.getItem('oc_admin') === '1';
 let modeReady = false;
 
-  // 管理者ボタンのラベル更新
-  }
-  render();
-}
-
 function setAdminMode(on) {
   isAdmin = on;
   sessionStorage.setItem('oc_admin', on ? '1' : '0');
@@ -552,9 +547,6 @@ fullResetBtn && fullResetBtn.addEventListener('click', async () => {
 const adminLogoutBtn = $('admin-logout-btn');
 adminLogoutBtn && adminLogoutBtn.addEventListener('click', () => {
   setAdminMode(false);
-});
-
- // サーバーに送る（結果を待たない）
 });
 
 function applyLabels(top, bottom, left, right) {
