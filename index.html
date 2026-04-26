@@ -384,8 +384,8 @@ const modeBtn       = $('mode-btn');
 const ADMIN_CODE = '0000';
 let isAdmin = sessionStorage.getItem('oc_admin') === '1';
 let currentMode = 'live'; // 'live' | 'hidden'
-let modeReady = false; // 初回poll完了前はdots非表示
-let modeLock = false;   // モード変更中はポーリング上書きを防ぐ
+let modeReady = false;   // 初回poll完了前はdots非表示
+const K_MODE = 'oc_mode'; // 管理者のモード選択をsessionStorageに保存するキー
 
 function applyMode(mode) {
   currentMode = mode;
@@ -416,6 +416,7 @@ function applyMode(mode) {
 function setAdminMode(on) {
   isAdmin = on;
   sessionStorage.setItem('oc_admin', on ? '1' : '0');
+  if (!on) sessionStorage.removeItem(K_MODE); // 解除時はモード記憶もクリア
   adminPanel.style.display    = on ? 'flex' : 'none';
   if (on) passcodeInput.value = '';
 }
@@ -591,12 +592,11 @@ adminLogoutBtn && adminLogoutBtn.addEventListener('click', () => {
 });
 
 // モード切替
-modeBtn && modeBtn.addEventListener('click', async () => {
+modeBtn && modeBtn.addEventListener('click', () => {
   const next = currentMode === 'live' ? 'hidden' : 'live';
-  modeLock = true;          // ロック開始
-  applyMode(next);          // 即座に画面反映
-  await fetchGAS(apiUrl, { action: 'setmode', mode: next });
-  modeLock = false;         // サーバー保存完了後にロック解除
+  sessionStorage.setItem(K_MODE, next); // 管理者の意図をローカル保存
+  applyMode(next);                       // 即座に画面反映
+  fetchGAS(apiUrl, { action: 'setmode', mode: next }); // サーバーに送る（結果を待たない）
 });
 
 function applyLabels(top, bottom, left, right) {
@@ -665,12 +665,19 @@ async function poll() {
       topicDisp.classList.toggle('empty', !data.topic);
       if (!topicInput.matches(':focus')) topicInput.value = data.topic || '';
     }
-    // モードを常に同期（初回 or ロック解除時のみ）
+    // モード同期：管理者はsessionStorage優先、参加者はサーバー優先
     const serverMode = data.mode || 'live';
-    if (!modeReady) {
-      applyMode(serverMode); // 初回のみ強制適用
-    } else if (!modeLock && serverMode !== currentMode) {
-      applyMode(serverMode); // ロック中は上書きしない
+    if (isAdmin) {
+      // 管理者：自分が選んだモードをsessionStorageから読む
+      const savedMode = sessionStorage.getItem(K_MODE) || serverMode;
+      if (!modeReady || savedMode !== currentMode) applyMode(savedMode);
+      // サーバーと差異があれば再送して同期
+      if (savedMode !== serverMode) {
+        fetchGAS(apiUrl, { action: 'setmode', mode: savedMode });
+      }
+    } else {
+      // 参加者：サーバーの値に従う
+      if (!modeReady || serverMode !== currentMode) applyMode(serverMode);
     }
     modeReady = true;
 
