@@ -111,7 +111,8 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 #dots2d{position:absolute;inset:0;pointer-events:none;transition:opacity .3s}
 
 /* ドット */
-.dw2{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;transition:left .28s cubic-bezier(.4,0,.2,1),top .28s cubic-bezier(.4,0,.2,1)}
+.dw2{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center}
+.dw2.anim{transition:left .18s cubic-bezier(.4,0,.2,1),top .18s cubic-bezier(.4,0,.2,1)}
 .dl2{position:absolute;bottom:calc(100% + 3px);left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10px;font-weight:500;font-family:var(--mono);padding:2px 7px;border-radius:5px;pointer-events:none}
 .dl2.me{color:#fff;font-size:11px;padding:3px 9px}
 .dl2.other{background:var(--surface);border:1px solid var(--border);color:var(--muted)}
@@ -136,16 +137,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .btn-del:hover{background:rgba(247,97,79,.1)}
 
 
-/* 非公開モードバナー */
-.mode-banner{display:none;text-align:center;font-size:13px;font-weight:600;padding:8px 16px;border-radius:10px;margin-bottom:4px}
-.mode-banner.hidden-mode{background:rgba(247,196,79,.12);border:1px solid rgba(247,196,79,.35);color:#f7c44f}
-.mode-banner.live-mode{background:rgba(79,201,122,.1);border:1px solid rgba(79,201,122,.3);color:var(--green)}
-/* モード切替ボタン */
-.btn-mode{border:2px solid transparent;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:600;padding:8px 16px;cursor:pointer;transition:all .15s}
-.btn-mode.to-live{background:var(--green);color:#fff;border-color:var(--green)}
-.btn-mode.to-hidden{background:rgba(247,196,79,.15);border-color:#f7c44f;color:#f7c44f}
-.btn-mode.to-live:hover{opacity:.85}
-.btn-mode.to-hidden:hover{background:rgba(247,196,79,.3)}
+
 /* 管理者パスコード */
 .passcode-wrap{display:flex;align-items:center;gap:6px}
 .passcode-wrap input{width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--mono);font-size:14px;padding:5px 10px;outline:none;text-align:center;letter-spacing:4px}
@@ -220,8 +212,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
       <div class="badge"><div class="dot-live"></div><span id="count-lbl">0</span> 人</div>
     </div>
   </div>
-
-  <div id="mode-banner" class="mode-banner"></div>
   <div class="canvas-card">
     <!-- トピック -->
     <div class="topic-row">
@@ -289,7 +279,6 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     <div class="admin-actions">
       <button class="btn-sm" id="admin-topic-btn" style="border-color:var(--accent);color:var(--accent)">✏️ テーマ編集</button>
       <button class="btn-sm" id="admin-label-btn" style="border-color:var(--accent);color:var(--accent)">✏️ ラベル編集</button>
-      <button class="btn-mode to-hidden" id="mode-btn">🙈 非公開モードにする</button>
       <button class="btn-reset" id="full-reset-btn">⚠️ 全データリセット</button>
       <button class="btn-sm" id="admin-logout-btn" style="border-color:var(--muted);color:var(--muted)">🔓 管理者モードを解除</button>
     </div>
@@ -378,37 +367,12 @@ const adminTopicBtn = $('admin-topic-btn');
 const adminLabelBtn = $('admin-label-btn');
 const fullResetBtn  = $('full-reset-btn');
 const passcodeInput = $('passcode-input');
-const modeBanner    = $('mode-banner');
-const modeBtn       = $('mode-btn');
 
 const ADMIN_CODE = '0000';
 let isAdmin = sessionStorage.getItem('oc_admin') === '1';
-let currentMode = 'live'; // 'live' | 'hidden'
-let modeReady = false;   // 初回poll完了前はdots非表示
-const K_MODE = 'oc_mode'; // 管理者のモード選択をsessionStorageに保存するキー
+let modeReady = false;
 
-function applyMode(mode) {
-  currentMode = mode;
-  // バナー更新
-  if (mode === 'hidden') {
-    modeBanner.className = 'mode-banner hidden-mode';
-    modeBanner.textContent = '👁 非公開モード：プロットは管理者が公開するまで他の人に見えません';
-    modeBanner.style.display = 'block';
-  } else {
-    modeBanner.className = 'mode-banner live-mode';
-    modeBanner.textContent = '✅ リアルタイムモード：全員のプロットがリアルタイムで表示されています';
-    modeBanner.style.display = 'block';
-    setTimeout(() => { if (currentMode === 'live') modeBanner.style.display = 'none'; }, 3000);
-  }
   // 管理者ボタンのラベル更新
-  if (modeBtn) {
-    if (mode === 'hidden') {
-      modeBtn.textContent = '👀 全員に公開する';
-      modeBtn.className = 'btn-mode to-live';
-    } else {
-      modeBtn.textContent = '🙈 非公開モードにする';
-      modeBtn.className = 'btn-mode to-hidden';
-    }
   }
   render();
 }
@@ -416,7 +380,6 @@ function applyMode(mode) {
 function setAdminMode(on) {
   isAdmin = on;
   sessionStorage.setItem('oc_admin', on ? '1' : '0');
-  if (!on) sessionStorage.removeItem(K_MODE); // 解除時はモード記憶もクリア
   adminPanel.style.display    = on ? 'flex' : 'none';
   if (on) passcodeInput.value = '';
 }
@@ -581,7 +544,7 @@ fullResetBtn && fullResetBtn.addEventListener('click', async () => {
   if (!confirm('全員の回答・テーマ・ラベル・モードをリセットします。よろしいですか？')) return;
   await fetchGAS(apiUrl, { action: 'reset' });
   opinions = {};
-  applyMode('live');
+  render();
   setAdminMode(false);
 });
 
@@ -591,12 +554,7 @@ adminLogoutBtn && adminLogoutBtn.addEventListener('click', () => {
   setAdminMode(false);
 });
 
-// モード切替
-modeBtn && modeBtn.addEventListener('click', () => {
-  const next = currentMode === 'live' ? 'hidden' : 'live';
-  sessionStorage.setItem(K_MODE, next); // 管理者の意図をローカル保存
-  applyMode(next);                       // 即座に画面反映
-  fetchGAS(apiUrl, { action: 'setmode', mode: next }); // サーバーに送る（結果を待たない）
+ // サーバーに送る（結果を待たない）
 });
 
 function applyLabels(top, bottom, left, right) {
@@ -665,20 +623,6 @@ async function poll() {
       topicDisp.classList.toggle('empty', !data.topic);
       if (!topicInput.matches(':focus')) topicInput.value = data.topic || '';
     }
-    // モード同期：管理者はsessionStorage優先、参加者はサーバー優先
-    const serverMode = data.mode || 'live';
-    if (isAdmin) {
-      // 管理者：自分が選んだモードをsessionStorageから読む
-      const savedMode = sessionStorage.getItem(K_MODE) || serverMode;
-      if (!modeReady || savedMode !== currentMode) applyMode(savedMode);
-      // サーバーと差異があれば再送して同期
-      if (savedMode !== serverMode) {
-        fetchGAS(apiUrl, { action: 'setmode', mode: savedMode });
-      }
-    } else {
-      // 参加者：サーバーの値に従う
-      if (!modeReady || serverMode !== currentMode) applyMode(serverMode);
-    }
     modeReady = true;
 
     // 意見マージ
@@ -715,40 +659,70 @@ function color(uid) {
   return uidColor[uid];
 }
 
+// ドット要素のキャッシュ（差分更新用）
+const dotCache = {};
+
 function render() {
-  // モード未確定の場合は全ドット非表示
   dots2d.style.opacity = modeReady ? '1' : '0';
-  const allEntries = Object.entries(opinions).filter(([,o]) => o?.x != null && o?.y != null);
-  // 非公開モード（非管理者）は自分のドットのみ表示
-  const entries = (currentMode === 'hidden' && !isAdmin)
-    ? allEntries.filter(([uid]) => uid === myUID)
-    : allEntries;
-  countLbl.textContent = isAdmin ? allEntries.length : entries.length;
+  const entries = Object.entries(opinions).filter(([,o]) => o?.x != null && o?.y != null);
+  countLbl.textContent = entries.length;
   delBtn.style.display = opinions[myUID] ? 'block' : 'none';
   instrEl.textContent  = opinions[myUID]
     ? '← クリックして位置を変更できます →'
     : '← キャンバスをクリックして自分の感覚をプロットしてください →';
 
-  entries.sort(([a],[b]) => a===myUID ? 1 : b===myUID ? -1 : 0);
-  dots2d.innerHTML = '';
+  const activeUids = new Set(entries.map(([uid]) => uid));
+
+  // 不要なドットを削除
+  Object.keys(dotCache).forEach(uid => {
+    if (!activeUids.has(uid)) {
+      dotCache[uid].remove();
+      delete dotCache[uid];
+    }
+  });
+
+  // 差分更新：既存ドットは位置だけ更新、新規ドットのみ作成
   entries.forEach(([uid, op]) => {
     const isMe = uid === myUID;
     const col  = color(uid);
-    const w = document.createElement('div'); w.className = 'dw2';
-    w.style.left   = `${op.x * 100}%`;
-    w.style.top    = `${op.y * 100}%`;
-    w.style.zIndex = isMe ? '40' : '10';
+    const lx = `${op.x * 100}%`;
+    const ly = `${op.y * 100}%`;
 
-    const l = document.createElement('div'); l.className = `dl2 ${isMe ? 'me' : 'other'}`;
-    if (isMe) l.style.background = col;
-    l.textContent = op.name;
+    if (dotCache[uid]) {
+      // 既存ドット：位置だけ更新（animクラスで滑らかに）
+      const w = dotCache[uid];
+      if (w.style.left !== lx || w.style.top !== ly) {
+        w.classList.add('anim');
+        w.style.left = lx;
+        w.style.top  = ly;
+      }
+    } else {
+      // 新規ドット：アニメーションなしで即時配置
+      const w = document.createElement('div');
+      w.className = 'dw2'; // animなし→即時表示
+      w.style.left   = lx;
+      w.style.top    = ly;
+      w.style.zIndex = isMe ? '40' : '10';
 
-    const c = document.createElement('div'); c.className = `dc2 ${isMe ? 'me' : 'other'}`;
-    c.style.background = col;
-    if (isMe) c.style.boxShadow = `0 0 0 4px ${col}44`;
+      const l = document.createElement('div');
+      l.className = `dl2 ${isMe ? 'me' : 'other'}`;
+      if (isMe) l.style.background = col;
+      l.textContent = op.name;
 
-    w.appendChild(l); w.appendChild(c); dots2d.appendChild(w);
+      const c = document.createElement('div');
+      c.className = `dc2 ${isMe ? 'me' : 'other'}`;
+      c.style.background = col;
+      if (isMe) c.style.boxShadow = `0 0 0 4px ${col}44`;
+
+      w.appendChild(l);
+      w.appendChild(c);
+      dots2d.appendChild(w);
+      dotCache[uid] = w;
+    }
   });
+
+  // zIndex再調整（自分を最前面に）
+  if (dotCache[myUID]) dotCache[myUID].style.zIndex = '40';
 }
 </script>
 </body>
