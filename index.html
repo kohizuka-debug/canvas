@@ -385,6 +385,7 @@ const ADMIN_CODE = '0000';
 let isAdmin = sessionStorage.getItem('oc_admin') === '1';
 let currentMode = 'live'; // 'live' | 'hidden'
 let modeReady = false; // 初回poll完了前はdots非表示
+let modeLock = false;   // モード変更中はポーリング上書きを防ぐ
 
 function applyMode(mode) {
   currentMode = mode;
@@ -592,8 +593,10 @@ adminLogoutBtn && adminLogoutBtn.addEventListener('click', () => {
 // モード切替
 modeBtn && modeBtn.addEventListener('click', async () => {
   const next = currentMode === 'live' ? 'hidden' : 'live';
+  modeLock = true;          // ロック開始
+  applyMode(next);          // 即座に画面反映
   await fetchGAS(apiUrl, { action: 'setmode', mode: next });
-  applyMode(next);
+  modeLock = false;         // サーバー保存完了後にロック解除
 });
 
 function applyLabels(top, bottom, left, right) {
@@ -662,10 +665,12 @@ async function poll() {
       topicDisp.classList.toggle('empty', !data.topic);
       if (!topicInput.matches(':focus')) topicInput.value = data.topic || '';
     }
-    // モードを常に同期（初回含む）
+    // モードを常に同期（初回 or ロック解除時のみ）
     const serverMode = data.mode || 'live';
-    if (!modeReady || serverMode !== currentMode) {
-      applyMode(serverMode);
+    if (!modeReady) {
+      applyMode(serverMode); // 初回のみ強制適用
+    } else if (!modeLock && serverMode !== currentMode) {
+      applyMode(serverMode); // ロック中は上書きしない
     }
     modeReady = true;
 
