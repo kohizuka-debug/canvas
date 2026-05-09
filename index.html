@@ -2,719 +2,612 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>意見分布キャンバス 2D</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>所感分布図</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;
-  --border:#2d3250;--accent:#4f8ef7;--text:#e8eaf6;
-  --muted:#7b82a8;--green:#4fc97a;--red:#f7614f;
-  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+:root {
+  --bg:          #0b1220;
+  --surface:     #111c2e;
+  --surface2:    #1a2740;
+  --border:      #1e3050;
+  --border2:     #2a4060;
+  --border-light:#3b5275;
+  --accent:      #2188ff;
+  --accent-hi:   #5ca3ff;
+  --other:       #ff8800;
+  --text:        #edf2f7;
+  --text-dim:    #a1b6cc;
+  --text-mute:   #7087a3;
+  --radius: 16px;
+  --shadow: 0 12px 40px rgba(0,0,0,0.5);
+  --dot-size: 44px;
 }
-body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:12px}
-
-/* カード */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:36px 32px;width:100%;max-width:480px}
-.card-title{font-size:20px;font-weight:600;letter-spacing:-.3px;margin-bottom:6px}
-.card-sub{color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:22px}
-.field{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--mono);font-size:15px;padding:13px 14px;outline:none;transition:border-color .2s;margin-bottom:12px}
-.field:focus{border-color:var(--accent)}
-.field::placeholder{color:var(--muted);font-size:13px;font-family:var(--font)}
-.btn{width:100%;background:var(--accent);border:none;border-radius:10px;color:#fff;font-family:var(--font);font-size:15px;font-weight:600;padding:13px;cursor:pointer;transition:opacity .15s,transform .1s}
-.btn:hover{opacity:.88}.btn:active{transform:scale(.98)}.btn:disabled{opacity:.4;cursor:not-allowed}
-.err-msg{color:var(--red);font-size:12px;margin-top:10px;line-height:1.7;white-space:pre-line;display:none}
-
-/* 管理者セットアップ */
-#admin{display:none;text-align:center}
-.step-list{text-align:left;margin-bottom:20px}
-.step-item{display:flex;gap:10px;margin-bottom:12px;align-items:flex-start}
-.sn{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
-.si{font-size:13px;color:var(--muted);line-height:1.65}
-.si b{color:var(--text)}
-.si code{font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;color:var(--accent)}
-.si .warn{display:block;margin-top:5px;font-size:11px;padding:5px 9px;background:rgba(79,142,247,.07);border-left:2px solid var(--accent);border-radius:0 5px 5px 0}
-.share-box{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;display:none}
-.share-box label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px}
-#share-url-text{font-family:var(--mono);font-size:11px;color:var(--accent);word-break:break-all;line-height:1.5;display:block;margin-bottom:10px}
-.btn-copy{background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--font);font-size:13px;padding:7px 16px;cursor:pointer;transition:border-color .2s}
-.btn-copy:hover{border-color:var(--accent)}.btn-copy.copied{color:var(--green);border-color:var(--green)}
-
-/* ログイン */
-#login{display:none;text-align:center}
-
-/* メイン */
-#main{display:none;width:100%;max-width:min(1400px,calc(100vw - 24px));flex-direction:column;gap:12px}
-
-.hdr{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 18px}
-.hdr-title{font-size:14px;font-weight:600}
-.hdr-sub{font-size:11px;color:var(--muted);margin-top:2px}
-.hdr-sub b{color:var(--accent)}
-.hdr-right{display:flex;align-items:center;gap:10px}
-.badge{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:13px;font-weight:600;font-family:var(--mono);color:var(--accent)}
-.dot-live{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 1.4s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-#sync-st{font-size:11px;color:var(--muted);font-family:var(--mono);transition:color .3s}
-#sync-st.ok{color:var(--green)}#sync-st.err{color:var(--red)}
-
-.canvas-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:20px}
-
-/* トピック行 */
-.topic-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
-#topic-disp{font-size:14px;font-weight:600;flex:1;letter-spacing:-.2px}
-#topic-disp.empty{color:var(--muted);font-weight:400;font-size:13px}
-.btn-sm{background:none;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-family:var(--font);font-size:12px;padding:5px 12px;cursor:pointer;white-space:nowrap;transition:border-color .2s,color .2s}
-.btn-sm:hover{border-color:var(--accent);color:var(--accent)}
-.topic-edit-row{display:none;gap:8px;margin-top:-6px;margin-bottom:12px}
-.topic-edit-row input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font);font-size:13px;padding:7px 10px;outline:none}
-.topic-edit-row input:focus{border-color:var(--accent)}
-
-/* 2Dキャンバス */
-.canvas2d-wrap{position:relative;margin:0 auto;display:flex;flex-direction:column;align-items:center}
-
-/* 上下ラベル */
-.lbl-top,.lbl-bottom{text-align:center;font-size:24px;font-weight:600;padding:4px 0;letter-spacing:.02em}
-.lbl-top{color:var(--green);margin-bottom:4px}
-.lbl-bottom{color:var(--red);margin-top:4px}
-
-/* 左右ラベルと本体を横並び */
-.canvas2d-row{display:flex;align-items:stretch;justify-content:center;gap:8px;height:calc(100vh - 300px);max-height:700px}
-.lbl-side{font-size:24px;font-weight:600;writing-mode:vertical-lr;text-orientation:mixed;padding:6px 2px;border-radius:6px;letter-spacing:.05em;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.lbl-left{color:var(--accent)}
-.lbl-right{color:var(--accent)}
-
-#canvas2d{
-  flex:none;position:relative;
-  height:100%;
-  width:auto;
-  aspect-ratio:4/3;
-  background:var(--surface2);
-  border:1.5px solid var(--border);
-  border-radius:16px;
-  cursor:crosshair;
-  overflow:hidden;
-  transition:border-color .2s;
-  touch-action:none;
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(33, 136, 255, 0.6); }
+  70%  { box-shadow: 0 0 0 12px rgba(33, 136, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(33, 136, 255, 0); }
 }
-#canvas2d:hover{border-color:var(--accent)}
+@keyframes pop-in {
+  0%   { transform: translate(-50%,-50%) scale(0); opacity:0; }
+  70%  { transform: translate(-50%,-50%) scale(1.15); opacity:1; }
+  100% { transform: translate(-50%,-50%) scale(1); opacity:1; }
+}
+@keyframes fade-up {
+  from { opacity:0; transform:translateY(16px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes slide-in-right {
+  from { opacity:0; transform:translateX(30px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", sans-serif;
+  background: var(--bg); color: var(--text);
+  height: 100dvh; width: 100vw;
+  overflow: hidden;
+  display: flex; flex-direction: column; gap: 0;
+}
+#header {
+  flex-shrink: 0; display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface); gap: 16px; min-height: 60px;
+}
+#header-left { display:flex; align-items:center; gap:12px; }
+#logo-mark {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+#logo-mark svg { width:20px; height:20px; }
+#theme-display {
+  font-size: 1.15rem; font-weight: 700; color: var(--text);
+  letter-spacing: -0.01em; max-width: 60vw;
+  overflow: hidden;
+  white-space: nowrap; text-overflow: ellipsis;
+}
+#header-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+#status-pill {
+  display: none; align-items: center; gap: 8px;
+  font-size: 0.85rem; font-weight: 600; color: var(--text-dim);
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 999px; padding: 6px 14px;
+}
+#status-pill .dot-live {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent); animation: pulse-ring 2.5s infinite; flex-shrink: 0;
+}
+#admin-btn {
+  font-size: 0.85rem; font-weight: 600; color: var(--text-dim);
+  background: transparent; border: 1px solid var(--border2);
+  border-radius: 8px; padding: 6px 14px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s; white-space: nowrap;
+}
+#admin-btn:hover { color: var(--text); background: var(--surface2); }
 
-/* 軸線 */
-#canvas2d::before{content:'';position:absolute;left:50%;top:0;width:1px;height:100%;background:var(--border);opacity:.5}
-#canvas2d::after{content:'';position:absolute;left:0;top:50%;width:100%;height:1px;background:var(--border);opacity:.5}
+#body { flex: 1; position: relative; display: flex; align-items: stretch; overflow: hidden; }
 
-/* グリッド */
-.grid-line{position:absolute;background:var(--border);opacity:.2;pointer-events:none}
-.grid-h{left:0;width:100%;height:1px}
-.grid-v{top:0;height:100%;width:1px}
+/* 参加画面 */
+#join-screen {
+  position: absolute;
+  inset: 0; display: flex;
+  align-items: center; justify-content: center;
+  background: var(--bg); z-index: 200; animation: fade-up 0.4s ease both;
+}
+#join-card {
+  width: 100%; max-width: 420px; background: var(--surface);
+  border: 1px solid var(--border2); border-radius: var(--radius);
+  padding: 40px 32px; display: flex;
+  flex-direction: column;
+  gap: 24px; box-shadow: var(--shadow); margin: 20px;
+}
+#join-card h2 {
+  font-size: 1.5rem; font-weight: 900; text-align: center;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+#join-card p {
+  font-size: 0.95rem; color: var(--text-dim); text-align: center;
+  line-height: 1.7; margin-top: -8px;
+}
+#name-input {
+  background: var(--surface2); border: 1.5px solid var(--border2);
+  border-radius: 10px; color: var(--text); font-size: 1.1rem;
+  font-family: inherit; padding: 16px;
+  outline: none;
+  text-align: center; transition: border-color 0.2s, box-shadow 0.2s; width: 100%;
+}
+#name-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(33, 136, 255, 0.2);
+}
+#join-btn {
+  background: var(--accent); color: white; border: none;
+  border-radius: 10px; padding: 16px; font-size: 1.05rem;
+  font-weight: 700; font-family: inherit; cursor: pointer;
+  transition: background 0.2s, transform 0.1s; letter-spacing: -0.01em;
+}
+#join-btn:hover  { background: var(--accent-hi); }
+#join-btn:active { transform: scale(0.98); }
 
-#dots2d{position:absolute;inset:0;pointer-events:none;transition:opacity .3s}
+#main-area {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 24px; gap: 24px; overflow: hidden;
+}
 
-/* ドット */
-.dw2{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center}
-.dw2.anim{transition:left .18s cubic-bezier(.4,0,.2,1),top .18s cubic-bezier(.4,0,.2,1)}
-.dl2{position:absolute;bottom:calc(100% + 3px);left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10px;font-weight:500;font-family:var(--mono);padding:2px 7px;border-radius:5px;pointer-events:none}
-.dl2.me{color:#fff;font-size:11px;padding:3px 9px}
-.dl2.other{background:var(--surface);border:1px solid var(--border);color:var(--muted)}
-.dc2{border-radius:50%;border:2px solid var(--bg)}
-.dc2.me{width:22px;height:22px}
-.dc2.other{width:16px;height:16px;opacity:.7}
+/* キャンバスレイアウト */
+#canvas-layout {
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  width: 100%; max-width: 1000px; gap: 20px; height: 100%;
+}
+.track-labels {
+  display: flex; justify-content: space-between; align-items: flex-end; width: 100%;
+  padding: 0 10px;
+}
+.axis-label {
+  font-size: 1.2rem; font-weight: 900; letter-spacing: 0.05em;
+  color: var(--accent-hi); display: flex; align-items: center; gap: 8px;
+  background: var(--surface2); padding: 10px 24px; border-radius: 30px;
+  border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
 
-#instr{text-align:center;color:var(--muted);font-size:12px;margin-top:8px}
+#canvas {
+  width: 100%; height: 320px;
+  position: relative;
+  background: var(--surface); border: 2px solid var(--border2);
+  border-radius: var(--radius); cursor: crosshair;
+  touch-action: none;
+  overflow: hidden; box-shadow: var(--shadow); flex-shrink: 0;
+}
 
-/* ラベル編集 */
-.label-edit-area{display:none;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:10px;gap:10px;flex-direction:column}
-.label-edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.label-field-wrap{display:flex;flex-direction:column;gap:4px}
-.label-field-wrap label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-.label-field-wrap input{background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--font);font-size:13px;padding:7px 10px;outline:none;width:100%}
-.label-field-wrap input:focus{border-color:var(--accent)}
-.label-edit-actions{display:flex;gap:8px;justify-content:flex-end}
+.track-line {
+  position: absolute; top: 50%; left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--border-light);
+  transform: translateY(-50%);
+  pointer-events: none; z-index: 1;
+}
+.track-tick {
+  position: absolute; top: 0;
+  bottom: 0; width: 2px;
+  background: rgba(255,255,255,0.03); pointer-events: none; z-index: 1;
+}
+.track-tick::after {
+  content: ""; position: absolute; top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); width: 4px; height: 24px;
+  background: var(--border-light);
+}
+.track-tick-label {
+  position: absolute; top: calc(50% + 20px);
+  transform: translateX(-50%);
+  font-size: 0.9rem; color: var(--text-dim); font-weight: 700;
+  pointer-events: none; z-index: 1;
+}
 
-/* フッター */
-.footer{display:flex;justify-content:space-between;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 18px;gap:8px;flex-wrap:wrap}
-.btn-del{background:none;border:1px solid rgba(247,97,79,.25);border-radius:8px;color:var(--red);font-family:var(--font);font-size:13px;padding:7px 14px;cursor:pointer;display:none}
-.btn-del:hover{background:rgba(247,97,79,.1)}
+.dot-wrap {
+  position: absolute; transform: translate(-50%,-50%);
+  z-index: 10; pointer-events: auto; cursor: default;
+  transition: left 0.35s cubic-bezier(0.34,1.56,0.64,1), top 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  animation: pop-in 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.dot {
+  width: var(--dot-size); height: var(--dot-size); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 900;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+.dot-user {
+  background: var(--accent); border: 3px solid white;
+  box-shadow: 0 0 0 4px rgba(33, 136, 255, 0.35), 0 4px 12px rgba(0,0,0,0.4);
+  animation: pulse-ring 2.5s 0.4s infinite;
+  z-index: 20;
+}
+.dot-other {
+  background: var(--other); border: 2.5px solid rgba(255,255,255,0.6);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.35);
+}
+.dot-name {
+  position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  background: rgba(10,16,30,0.95); color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 700; white-space: nowrap;
+  padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border-light);
+  pointer-events: none; opacity: 0; transition: opacity 0.15s;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.dot-wrap:hover .dot-name { opacity: 1; }
 
+#admin-panel {
+  display: none; flex-direction: column; gap: 0; width: 300px;
+  flex-shrink: 0;
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+  max-height: calc(100vh - 60px - 48px);
+  overflow-y: auto;
+  animation: slide-in-right 0.25s ease both;
+}
+.admin-section { padding: 20px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column;
+  gap: 12px; }
+.admin-section:last-child { border-bottom: none; }
+.admin-section-title { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-mute); }
+.admin-input {
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 8px; color: var(--text); font-size: 0.95rem;
+  padding: 10px 14px; outline: none;
+  width: 100%;
+}
+.admin-input:focus { border-color: var(--accent); }
+.admin-row { display: flex; align-items: center; gap: 10px; }
+.admin-row-label { font-size: 0.85rem; font-weight: 700; color: var(--text-dim);
+  width: 24px; flex-shrink: 0; text-align: center; }
+.admin-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%;
+  padding: 12px; border-radius: 8px; border: none;
+  font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: filter 0.15s, transform 0.1s;
+}
+.admin-btn:hover  { filter: brightness(1.12); }
+.admin-btn:active { transform: scale(0.97); }
+.admin-btn-primary { background: var(--accent); color: white; }
+.admin-btn-warn    { background: #e67a00; color: white; }
+.admin-btn-danger  { background: #cc3333; color: white; }
+.admin-btn-green   { background: #1f994d; color: white; }
+#admin-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: rgba(33, 136, 255, 0.1);
+  border-bottom: 1px solid var(--border2); }
+#admin-header span { font-size: 0.9rem; font-weight: 700; color: var(--accent-hi); }
+#admin-close-btn { background: none; border: none;
+  color: var(--text-mute); font-size: 1.4rem; cursor: pointer; }
 
+#status-bar {
+  display: none; flex-shrink: 0; align-items: center; justify-content: space-between;
+  padding: 8px 20px;
+  font-size: 0.85rem; color: var(--text-mute);
+  border-top: 1px solid var(--border); background: var(--surface); min-height: 40px;
+}
+#status-bar .badge-row { display: flex; align-items: center; gap: 12px; }
+#status-lock { display: none; align-items: center; gap: 6px; font-weight: 700; color: #d94040; }
+#status-hide { display: none; align-items: center; gap: 6px; font-weight: 700; color: var(--accent-hi); }
+#status-user { font-weight: 700; color: var(--text-dim); }
 
-/* 管理者パスコード */
-.passcode-wrap{display:flex;align-items:center;gap:6px}
-.passcode-wrap input{width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--mono);font-size:14px;padding:5px 10px;outline:none;text-align:center;letter-spacing:4px}
-.passcode-wrap input:focus{border-color:var(--accent)}
-.passcode-wrap label{font-size:11px;color:var(--muted)}
-
-/* 管理者パネル */
-.admin-panel{background:rgba(79,142,247,.06);border:1px solid rgba(79,142,247,.25);border-radius:14px;padding:16px;display:none;flex-direction:column;gap:10px}
-.admin-panel-title{font-size:12px;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
-.admin-actions{display:flex;gap:8px;flex-wrap:wrap}
-.btn-reset{background:none;border:1px solid rgba(247,97,79,.4);border-radius:8px;color:var(--red);font-family:var(--font);font-size:13px;font-weight:600;padding:8px 16px;cursor:pointer;transition:background .15s}
-.btn-reset:hover{background:rgba(247,97,79,.12)}
-
-/* リップル */
-@keyframes rip{from{transform:translate(-50%,-50%) scale(0);opacity:.7}to{transform:translate(-50%,-50%) scale(5);opacity:0}}
-.rip{position:absolute;width:20px;height:20px;background:rgba(79,142,247,.35);border-radius:50%;pointer-events:none;animation:rip .4s ease-out forwards;z-index:99}
+#toast {
+  position: fixed;
+  top: 80px; left: 50%; transform: translateX(-50%) translateY(-30px);
+  background: var(--surface); border: 2px solid var(--border2); color: var(--text);
+  padding: 12px 30px; border-radius: 30px;
+  font-weight: 700; font-size: 0.95rem;
+  box-shadow: var(--shadow); opacity: 0; pointer-events: none;
+  transition: transform 0.3s, opacity 0.3s; z-index: 1000;
+}
+#toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 </style>
 </head>
 <body>
-
-<!-- ① 管理者セットアップ -->
-<div id="admin" class="card">
-  <div style="font-size:34px;margin-bottom:10px">⚙️</div>
-  <div class="card-title">管理者セットアップ</div>
-  <p class="card-sub">これは管理者だけが1回やればOK。<br>参加者にはURLを送るだけです。</p>
-  <div class="step-list">
-    <div class="step-item"><div class="sn">1</div><div class="si"><b><a href="https://sheets.new" target="_blank" style="color:var(--accent)">sheets.new</a> でスプレッドシートを新規作成</b></div></div>
-    <div class="step-item"><div class="sn">2</div><div class="si"><b>「拡張機能」→「Apps Script」を開く</b></div></div>
-    <div class="step-item"><div class="sn">3</div><div class="si"><b><code>apps-script-backend-v5.gs</code> の中身を貼り付けて保存</b></div></div>
-    <div class="step-item"><div class="sn">4</div><div class="si">
-      <b>「デプロイ」→「新しいデプロイ」</b><br>
-      種類: ウェブアプリ ／ 実行: 自分 ／ アクセス: <b style="color:var(--accent)">全員</b>
-      <span class="warn">⚠️ 初回の「許可」ダイアログ → 「詳細」→「安全でないページへ移動」→「許可」まで進む</span>
-    </div></div>
-    <div class="step-item"><div class="sn">5</div><div class="si"><b>デプロイURLを下に貼り付ける</b></div></div>
+<div id="header">
+  <div id="header-left">
+    <div id="logo-mark">
+      <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="5" width="14" height="8" rx="2" stroke="white" stroke-width="1.5"/>
+        <circle cx="9" cy="9" r="2" fill="white" opacity="0.9"/>
+        <line x1="5" y1="9" x2="6" y2="9" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="12" y1="9" x2="13" y2="9" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div id="theme-display">読み込み中…</div>
   </div>
-  <div id="host-warning" style="display:none;font-size:12px;color:var(--red);background:rgba(247,97,79,.08);border:1px solid rgba(247,97,79,.3);border-radius:8px;padding:10px 12px;margin-bottom:12px;line-height:1.7"></div>
-  <input class="field" style="font-size:12px;font-family:var(--mono)" type="text" id="gas-input"
-    placeholder="https://script.google.com/macros/s/XXXXXX/exec">
-  <div id="host-manual-wrap" style="display:none">
-    <input class="field" style="font-size:12px;font-family:var(--mono)" type="text" id="host-input"
-      placeholder="https://example.com/index.html （このHTMLの公開URL）">
-  </div>
-  <button class="btn" id="connect-btn">接続テストして参加URLを生成 →</button>
-  <div class="err-msg" id="admin-err"></div>
-  <div class="share-box" id="share-box">
-    <label>👥 参加者に共有するURL</label>
-    <span id="share-url-text"></span>
-    <button class="btn-copy" id="copy-btn">URLをコピー</button>
+  <div id="header-right">
+    <div id="status-pill"><div class="dot-live"></div><span id="status-count">0人</span>が回答中</div>
+    <button id="admin-btn" onclick="openAdminPrompt()">管理者</button>
   </div>
 </div>
-
-<!-- ② 参加者ログイン -->
-<div id="login" class="card" style="text-align:center">
-  <div style="font-size:36px;margin-bottom:10px">📊</div>
-  <div class="card-title">意見分布キャンバス</div>
-  <p class="card-sub">名前または番号を入力して参加してください。<br>別の端末からもリアルタイム参加できます。</p>
-  <input class="field" style="text-align:center;font-size:18px" id="name-input"
-    type="text" placeholder="例: 田中、01、Aチーム" maxlength="12">
-  <button class="btn" id="join-btn">参加する →</button>
-</div>
-
-<!-- ③ メイン -->
-<div id="main">
-  <div class="hdr">
-    <div>
-      <div class="hdr-title">意見分布キャンバス 2D</div>
-      <div class="hdr-sub">参加中: <b id="my-name-lbl">—</b></div>
-    </div>
-    <div class="hdr-right">
-      <div id="sync-st">同期中...</div>
-      <div class="badge"><div class="dot-live"></div><span id="count-lbl">0</span> 人</div>
+<div id="body">
+  <div id="join-screen">
+    <div id="join-card">
+      <h2>参加登録</h2>
+      <p>名前を入力してキャンバスに参加してください。<br>横軸の割合であなたの意見を表明しましょう。</p>
+      <input type="text" id="name-input" placeholder="名前を入力（最大20文字）" maxlength="20" onkeydown="if(event.key==='Enter') join()">
+      <button id="join-btn" onclick="join()">キャンバスに入る →</button>
     </div>
   </div>
-  <div class="canvas-card">
-    <!-- トピック -->
-    <div class="topic-row">
-      <div id="topic-disp" class="empty">（質問・テーマ未設定）</div>
-      <button class="btn-sm" id="topic-btn" style="display:none">✏️ テーマ編集</button>
-    </div>
-    <div class="topic-edit-row" id="topic-row">
-      <input type="text" id="topic-input" placeholder="例: 人に触れられるとき、どう感じますか？" maxlength="60">
-      <button class="btn-sm" id="topic-save">設定</button>
-    </div>
-
-    <!-- 2Dキャンバス本体 -->
-    <div class="canvas2d-wrap">
-      <div class="lbl-top" id="lbl-top"></div>
-      <div class="canvas2d-row">
-        <div class="lbl-side lbl-left" id="lbl-left">✖</div>
-        <div id="canvas2d">
-          <!-- グリッド -->
-          <div class="grid-line grid-h" style="top:25%"></div>
-          <div class="grid-line grid-h" style="top:75%"></div>
-          <div class="grid-line grid-v" style="left:25%"></div>
-          <div class="grid-line grid-v" style="left:75%"></div>
-          <div id="dots2d"></div>
-        </div>
-        <div class="lbl-side lbl-right" id="lbl-right">○</div>
+  <div id="main-area">
+    <div id="canvas-layout">
+      <div class="track-labels">
+        <div id="canvas-label-left" class="axis-label">100% 反対</div>
+        <div id="canvas-label-right" class="axis-label">100% 賛成</div>
       </div>
-      <div class="lbl-bottom" id="lbl-bottom"></div>
-    </div>
-
-    <div id="instr">← キャンバスをクリックして自分の感覚をプロットしてください →</div>
-
-    <!-- ラベル編集パネル（管理者のみ表示） -->
-    <div style="text-align:right;margin-top:10px;display:none" id="label-btn-wrap">
-      <button class="btn-sm" id="label-btn">✏️ ラベル編集</button>
-    </div>
-    <div class="label-edit-area" id="label-area">
-      <div class="label-edit-grid">
-        <div class="label-field-wrap">
-          <label>↑ 上ラベル</label>
-          <input type="text" id="lbl-top-input" maxlength="20">
-        </div>
-        <div class="label-field-wrap">
-          <label>↓ 下ラベル</label>
-          <input type="text" id="lbl-bottom-input" maxlength="20">
-        </div>
-        <div class="label-field-wrap">
-          <label>← 左ラベル</label>
-          <input type="text" id="lbl-left-input" maxlength="20">
-        </div>
-        <div class="label-field-wrap">
-          <label>→ 右ラベル</label>
-          <input type="text" id="lbl-right-input" maxlength="20">
-        </div>
+      <div id="canvas">
+        <div class="track-line"></div>
+        <div class="track-tick" style="left: 25%;"></div>
+        <div class="track-tick" style="left: 50%;"></div>
+        <div class="track-tick" style="left: 75%;"></div>
+        <div class="track-tick-label" style="left: 25%;">25%</div>
+        <div class="track-tick-label" style="left: 50%;">50%</div>
+        <div class="track-tick-label" style="left: 75%;">75%</div>
       </div>
-      <div class="label-edit-actions">
-        <button class="btn-sm" id="label-cancel">キャンセル</button>
-        <button class="btn-sm" id="label-save" style="border-color:var(--accent);color:var(--accent)">全員に反映して保存</button>
+      <p style="font-size: 0.9rem; color: var(--text-mute); margin-top: 4px;">
+        ※ 横位置が「割合」を表します。縦位置はアイコンが重ならないように自由に調整してください。
+      </p>
+    </div>
+    <div id="admin-panel">
+      <div id="admin-header"><span>管理者パネル</span><button id="admin-close-btn" onclick="exitAdmin()">✕</button></div>
+      <div class="admin-section">
+        <div class="admin-section-title">テーマ設定</div>
+        <input class="admin-input" id="cfg-theme" type="text" placeholder="例：あなたの意見は？">
+        <button class="admin-btn admin-btn-primary" onclick="saveConfig('theme')">テーマを保存</button>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-title">両端のラベル設定</div>
+        <div class="admin-row"><div class="admin-row-label">左</div><input class="admin-input" id="cfg-left" type="text"></div>
+        <div class="admin-row"><div class="admin-row-label">右</div><input class="admin-input" id="cfg-right" type="text"></div>
+        <button class="admin-btn admin-btn-primary" onclick="saveConfig('labels')">ラベルを保存</button>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-title">キャンバス制御</div>
+        <button id="btn-hide" class="admin-btn admin-btn-warn" onclick="toggleHideOthers()">🙈 他の意見を隠す</button>
+        <button id="btn-lock" class="admin-btn admin-btn-warn" onclick="toggleLock()">🔒 投票をロック</button>
+        <button class="admin-btn admin-btn-green" onclick="exportImage()">🖼️ 画像として保存</button>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-title">危険な操作</div>
+        <button class="admin-btn admin-btn-danger" onclick="resetAll()">⚠️ 全データをリセット</button>
       </div>
     </div>
   </div>
-
-  <!-- 管理者パネル -->
-  <div class="admin-panel" id="admin-panel">
-    <div class="admin-panel-title">🔐 管理者モード</div>
-    <div class="admin-actions">
-      <button class="btn-sm" id="admin-topic-btn" style="border-color:var(--accent);color:var(--accent)">✏️ テーマ編集</button>
-      <button class="btn-sm" id="admin-label-btn" style="border-color:var(--accent);color:var(--accent)">✏️ ラベル編集</button>
-      <button class="btn-reset" id="full-reset-btn">⚠️ 全データリセット</button>
-      <button class="btn-sm" id="admin-logout-btn" style="border-color:var(--muted);color:var(--muted)">🔓 管理者モードを解除</button>
-    </div>
-  </div>
-
-  <div class="footer">
-    <button class="btn-sm" id="reset-btn">← 名前を変更</button>
-    <button class="btn-del" id="del-btn">× 自分のプロットを削除</button>
-    <div class="passcode-wrap">
-      <label>管理者</label>
-      <input type="password" id="passcode-input" maxlength="4" placeholder="••••">
-    </div>
-  </div>
 </div>
+<div id="status-bar">
+  <div class="badge-row">
+    <span id="status-lock">ロック中</span>
+    <span id="status-hide">非表示モード</span>
+  </div>
+  <span id="status-user"></span>
+</div>
+<div id="toast"></div>
 
 <script>
-const K_UID  = 'oc_uid';
-const K_NAME = 'oc_name';
-const POLL_MS = 800; // 高速ポーリング
+// ===================================================
+// GAS デプロイURL（ここだけ変更すればOK）
+// ===================================================
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzLpQyZ7MlaRCexu50ivACCMPhEHmJBw2uhi5YDF7GEyh_pbEI2w_cHOOb6xBCUIe6F/exec";
 
-function getApiFromHash() {
-  try {
-    const h = location.hash.slice(1);
-    if (!h) return '';
-    const decoded = atob(h);
-    if (decoded.startsWith('https://script.google.com')) return decoded;
-    return '';
-  } catch(e) { return ''; }
-}
+const STATE = { myName: null, adminPass: null, config: {}, votes: [], totalCount: 0, locked: false, hideOthers: false, myX: null, myY: null };
 
-let apiUrl  = getApiFromHash();
-let myUID   = localStorage.getItem(K_UID) || '';
-let myName  = localStorage.getItem(K_NAME) || '';
-let opinions = {};
-let pollTimer = null;
-let errCount  = 0;
-
-if (!myUID) {
-  myUID = 'u' + Math.random().toString(36).slice(2,9) + Date.now().toString(36);
-  localStorage.setItem(K_UID, myUID);
-}
-
-const $ = id => document.getElementById(id);
-const adminEl    = $('admin');
-const loginEl    = $('login');
-const mainEl     = $('main');
-const hostInput     = $('host-input');
-const hostManualWrap= $('host-manual-wrap');
-const hostWarning   = $('host-warning');
-const gasInput      = $('gas-input');
-const connectBtn    = $('connect-btn');
-const adminErr      = $('admin-err');
-const shareBox      = $('share-box');
-const shareUrlText  = $('share-url-text');
-const copyBtn       = $('copy-btn');
-const nameInput  = $('name-input');
-const joinBtn    = $('join-btn');
-const canvas2d   = $('canvas2d');
-const dots2d     = $('dots2d');
-const countLbl   = $('count-lbl');
-const myNameLbl  = $('my-name-lbl');
-const delBtn     = $('del-btn');
-const resetBtn   = $('reset-btn');
-const instrEl    = $('instr');
-const syncSt     = $('sync-st');
-const topicDisp  = $('topic-disp');
-const topicInput = $('topic-input');
-const topicRow   = $('topic-row');
-const topicBtn   = $('topic-btn');
-const topicSave  = $('topic-save');
-const lblTop     = $('lbl-top');
-const lblBottom  = $('lbl-bottom');
-const lblLeft    = $('lbl-left');
-const lblRight   = $('lbl-right');
-const lblTopInput    = $('lbl-top-input');
-const lblBottomInput = $('lbl-bottom-input');
-const lblLeftInput   = $('lbl-left-input');
-const lblRightInput  = $('lbl-right-input');
-const labelBtn      = $('label-btn');
-const labelBtnWrap  = $('label-btn-wrap');
-const labelArea     = $('label-area');
-const labelSave     = $('label-save');
-const labelCancel   = $('label-cancel');
-const adminPanel    = $('admin-panel');
-const adminTopicBtn = $('admin-topic-btn');
-const adminLabelBtn = $('admin-label-btn');
-const fullResetBtn  = $('full-reset-btn');
-const passcodeInput = $('passcode-input');
-
-const ADMIN_CODE = '0000';
-let isAdmin = sessionStorage.getItem('oc_admin') === '1';
-let modeReady = false;
-
-function setAdminMode(on) {
-  isAdmin = on;
-  sessionStorage.setItem('oc_admin', on ? '1' : '0');
-  adminPanel.style.display    = on ? 'flex' : 'none';
-  if (on) passcodeInput.value = '';
-}
-
-// パスコード入力
-passcodeInput && passcodeInput.addEventListener('input', () => {
-  if (passcodeInput.value === ADMIN_CODE) setAdminMode(true);
-  if (passcodeInput.value.length === 4 && passcodeInput.value !== ADMIN_CODE) {
-    passcodeInput.style.borderColor = 'var(--red)';
-    setTimeout(() => { passcodeInput.style.borderColor = ''; passcodeInput.value = ''; }, 600);
-  }
-});
-
-// 公開URLを自動検出
-function detectHostUrl() {
-  const href = location.href.split('#')[0];
-  const isInternal = href.includes('googleusercontent.com') || href.includes('claude.ai') || href.startsWith('blob:') || href.startsWith('file:');
-  return isInternal ? null : href;
-}
-
-// 画面振り分け
-(function init() {
-  if (!apiUrl) {
-    adminEl.style.display = 'block';
-    // 自動検出できない場合のみ手動入力欄を表示
-    if (!detectHostUrl()) {
-      hostWarning.style.display = 'block';
-      hostWarning.textContent = '⚠️ このページのURLを自動取得できません。\nGitHub PagesのURLをそのままブラウザで開いた状態でセットアップしてください。\n（Claudeのアーティファクト上では動作しません）\n\n今すぐ設定する場合は、下に公開URLを手入力してください。';
-      hostManualWrap.style.display = 'block';
-    }
-    return;
-  }
-  if (!myName) { loginEl.style.display = 'block'; return; }
-  showMain();
-})();
-
-// ============================================================
-// 管理者セットアップ
-// ============================================================
-connectBtn.addEventListener('click', async () => {
-  const url     = gasInput.value.trim();
-  const autoUrl = detectHostUrl();
-  const hostUrl = autoUrl || (hostInput ? hostInput.value.trim() : '');
-
-  if (!url.includes('script.google.com')) {
-    showAdminErr('GASのURLを貼ってください。\nhttps://script.google.com/macros/s/.../exec の形式です。');
-    return;
-  }
-  if (!hostUrl || !hostUrl.startsWith('http')) {
-    showAdminErr('公開URLを入力してください。\n例: https://ユーザー名.github.io/canvas/');
-    return;
-  }
-  connectBtn.disabled = true;
-  connectBtn.textContent = '接続テスト中...';
-  adminErr.style.display = 'none';
-  shareBox.style.display = 'none';
-  try {
-    const data = await fetchGAS(url, { action: 'get' });
-    if (!data || !data.ok) throw new Error(data ? data.error : '応答なし');
-    const hash = btoa(url);
-    const shareUrl = hostUrl.split('#')[0] + '#' + hash;
-    shareUrlText.textContent = shareUrl;
-    shareBox.style.display = 'block';
-    connectBtn.textContent = '✓ 接続成功！URLを参加者に共有してください';
-    connectBtn.style.background = 'var(--green)';
-  } catch(e) {
-    showAdminErr(
-      '接続に失敗しました。\n\n確認事項:\n• URLが正しいか（exec で終わるURL）\n• デプロイ時に「アクセス: 全員」を選んだか\n• 初回の「許可」ダイアログを完了したか\n\nエラー詳細: ' + e.message
-    );
-    connectBtn.disabled = false;
-    connectBtn.textContent = '接続テストして参加URLを生成 →';
-  }
-});
-
-copyBtn.addEventListener('click', () => {
-  navigator.clipboard.writeText(shareUrlText.textContent).then(() => {
-    copyBtn.textContent = '✓ コピーしました！';
-    copyBtn.classList.add('copied');
-    setTimeout(() => { copyBtn.textContent = 'URLをコピー'; copyBtn.classList.remove('copied'); }, 2000);
+// google.script.run の代わりにfetchでGASのdoPostを呼ぶ
+async function callAPI(action, params = {}) {
+  const res = await fetch(GAS_URL, {
+    method: "POST",
+    body: JSON.stringify({ action, ...params }),
   });
-});
-
-function showAdminErr(msg) { adminErr.style.display = 'block'; adminErr.textContent = msg; }
-
-// ============================================================
-// ログイン
-// ============================================================
-joinBtn.addEventListener('click', () => {
-  const n = nameInput.value.trim();
-  if (!n) { nameInput.focus(); return; }
-  myName = n;
-  localStorage.setItem(K_NAME, n);
-  loginEl.style.display = 'none';
-  showMain();
-});
-nameInput.addEventListener('keydown', e => { if(e.key==='Enter') joinBtn.click(); });
-
-// ============================================================
-// メイン
-// ============================================================
-function showMain() {
-  mainEl.style.display = 'flex';
-  myNameLbl.textContent = myName;
-  if (isAdmin) setAdminMode(true);
-  startPolling();
-}
-
-resetBtn.addEventListener('click', () => {
-  stopPolling();
-  localStorage.removeItem(K_NAME);
-  location.reload();
-});
-
-delBtn.addEventListener('click', async () => {
-  delete opinions[myUID];
-  render();
-  await fetchGAS(apiUrl, { action: 'delete', uid: myUID });
-});
-
-// トピック（管理者パネルのボタンから）
-adminTopicBtn && adminTopicBtn.addEventListener('click', () => {
-  const open = topicRow.style.display === 'flex';
-  topicRow.style.display = open ? 'none' : 'flex';
-  if (!open) topicInput.focus();
-});
-topicBtn.addEventListener('click', () => {
-  const open = topicRow.style.display === 'flex';
-  topicRow.style.display = open ? 'none' : 'flex';
-  if (!open) topicInput.focus();
-});
-topicSave.addEventListener('click', async () => {
-  const t = topicInput.value.trim();
-  topicDisp.textContent = t || '（質問・テーマ未設定）';
-  topicDisp.classList.toggle('empty', !t);
-  topicRow.style.display = 'none';
-  await fetchGAS(apiUrl, { action: 'settopic', topic: t });
-});
-topicInput.addEventListener('keydown', e => { if(e.key==='Enter') topicSave.click(); });
-
-// ラベル編集（管理者パネルのボタンから）
-adminLabelBtn && adminLabelBtn.addEventListener('click', () => {
-  const open = labelArea.style.display === 'flex';
-  labelArea.style.display = open ? 'none' : 'flex';
-});
-labelBtn && labelBtn.addEventListener('click', () => {
-  const open = labelArea.style.display === 'flex';
-  labelArea.style.display = open ? 'none' : 'flex';
-});
-labelCancel.addEventListener('click', () => { labelArea.style.display = 'none'; });
-labelSave.addEventListener('click', async () => {
-  const top    = lblTopInput.value.trim()    || '';
-  const bottom = lblBottomInput.value.trim() || '';
-  const left   = lblLeftInput.value.trim()   || '✖';
-  const right  = lblRightInput.value.trim()  || '○';
-  applyLabels(top, bottom, left, right);
-  labelArea.style.display = 'none';
-  await fetchGAS(apiUrl, { action: 'setlabel', top, bottom, left, right });
-});
-
-// 全データリセット
-fullResetBtn && fullResetBtn.addEventListener('click', async () => {
-  if (!confirm('全員の回答・テーマ・ラベル・モードをリセットします。よろしいですか？')) return;
-  await fetchGAS(apiUrl, { action: 'reset' });
-  opinions = {};
-  render();
-  setAdminMode(false);
-});
-
-// 管理者モード解除
-const adminLogoutBtn = $('admin-logout-btn');
-adminLogoutBtn && adminLogoutBtn.addEventListener('click', () => {
-  setAdminMode(false);
-});
-
-function applyLabels(top, bottom, left, right) {
-  lblTop.textContent    = top;
-  lblBottom.textContent = bottom;
-  lblLeft.textContent   = left;
-  lblRight.textContent  = right;
-  lblTopInput.value     = top;
-  lblBottomInput.value  = bottom;
-  lblLeftInput.value    = left;
-  lblRightInput.value   = right;
-}
-
-// ============================================================
-// キャンバスクリック／タッチ
-// ============================================================
-function handleCanvasClick(clientX, clientY) {
-  const rect = canvas2d.getBoundingClientRect();
-  const x = Math.max(0.01, Math.min(0.99, (clientX - rect.left)  / rect.width));
-  const y = Math.max(0.01, Math.min(0.99, (clientY - rect.top)   / rect.height));
-
-  // リップル
-  const rip = document.createElement('div');
-  rip.className = 'rip';
-  rip.style.left = `${x*100}%`;
-  rip.style.top  = `${y*100}%`;
-  canvas2d.appendChild(rip);
-  setTimeout(() => rip.remove(), 400);
-
-  const ts = Date.now();
-  opinions[myUID] = { uid: myUID, name: myName, x, y, ts };
-  render();
-  fetchGAS(apiUrl, { action: 'set', uid: myUID, name: myName, x: x.toFixed(4), y: y.toFixed(4), ts });
-}
-
-canvas2d.addEventListener('click', e => handleCanvasClick(e.clientX, e.clientY));
-canvas2d.addEventListener('touchstart', e => {
-  e.preventDefault();
-  const t = e.touches[0];
-  handleCanvasClick(t.clientX, t.clientY);
-}, { passive: false });
-
-// ============================================================
-// API
-// ============================================================
-async function fetchGAS(url, params) {
-  const qs  = new URLSearchParams(params).toString();
-  const res = await fetch(`${url}?${qs}`, { method: 'GET', redirect: 'follow' });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
   return res.json();
 }
 
-// ============================================================
-// ポーリング
-// ============================================================
-async function poll() {
-  try {
-    const params = isAdmin ? { action: 'get', admin: '1' } : { action: 'get' };
-    const data = await fetchGAS(apiUrl, params);
-    if (!data || !data.ok) throw new Error('invalid');
+window.addEventListener("load", async () => {
+  await refreshConfig();
+  await refreshVotes();
+  setInterval(refreshVotes, 5000);
+});
 
-    // ラベル・トピック・モード反映
-    if (data.labelTop)    applyLabels(data.labelTop, data.labelBottom, data.labelLeft, data.labelRight);
-    if (data.topic !== undefined) {
-      topicDisp.textContent = data.topic || '（質問・テーマ未設定）';
-      topicDisp.classList.toggle('empty', !data.topic);
-      if (!topicInput.matches(':focus')) topicInput.value = data.topic || '';
-    }
-    modeReady = true;
+async function refreshConfig() {
+  const res = await callAPI("getConfig", {});
+  if (!res.ok) return;
+  applyConfig(res.config);
+}
 
-    // 意見マージ
-    const next = {};
-    (data.opinions || []).forEach(op => { next[op.uid] = op; });
-    if (opinions[myUID] && (!next[myUID] || opinions[myUID].ts > (next[myUID]?.ts ?? 0))) {
-      next[myUID] = opinions[myUID];
-    }
-    opinions = next;
-    render();
+function applyConfig(config) {
+  STATE.config = Object.assign({}, STATE.config, config);
+  const c = STATE.config;
+  document.getElementById("theme-display").textContent = c.theme || "このアイデアに賛成ですか？";
+  document.getElementById("cfg-theme").value = c.theme || "";
+  const l = c.labelLeft || "100% 反対";
+  const r = c.labelRight || "100% 賛成";
+  document.getElementById("canvas-label-left").textContent = l;
+  document.getElementById("canvas-label-right").textContent = r;
+  document.getElementById("cfg-left").value = l;
+  document.getElementById("cfg-right").value = r;
+}
 
-    errCount = 0;
-    syncSt.textContent = '✓ 同期済み';
-    syncSt.className = 'sync-st ok';
-  } catch(e) {
-    errCount++;
-    syncSt.textContent = `× エラー(${errCount})`;
-    syncSt.className = 'sync-st err';
+function join() {
+  const name = document.getElementById("name-input").value.trim();
+  if (!name) { toast("名前を入力してください"); return; }
+  STATE.myName = name;
+  const joinScreen = document.getElementById("join-screen");
+  joinScreen.style.opacity = "0";
+  joinScreen.style.transition = "opacity 0.3s";
+  setTimeout(() => { joinScreen.style.display = "none"; }, 300);
+  document.getElementById("canvas-layout").style.display = "flex";
+  document.getElementById("status-bar").style.display = "flex";
+  document.getElementById("status-pill").style.display = "flex";
+  document.getElementById("status-user").textContent = name;
+  const canvas = document.getElementById("canvas");
+  const handler = (e) => {
+    e.preventDefault();
+    if (STATE.locked) { toast("ロック中 — 投票できません"); return; }
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    STATE.myX = Math.max(0.02, Math.min(0.98, (cx - rect.left) / rect.width));
+    STATE.myY = Math.max(0.05, Math.min(0.95, (cy - rect.top) / rect.height));
+    renderDots();
+    sendVote(STATE.myX, STATE.myY);
+  };
+  canvas.addEventListener("click", handler);
+  canvas.addEventListener("touchstart", handler, { passive: false });
+  refreshVotes();
+}
+
+async function sendVote(x, y) {
+  const res = await callAPI("vote", { name: STATE.myName, x, y });
+  if (!res.ok) { toast(res.error || "投票できませんでした"); return; }
+  await refreshVotes();
+}
+
+async function refreshVotes() {
+  const res = await callAPI("getVotes", { name: STATE.myName, pass: STATE.adminPass });
+  if (!res.ok) return;
+  STATE.locked = res.locked;
+  STATE.hideOthers = res.hideOthers;
+  STATE.votes = res.votes;
+  STATE.totalCount = res.totalCount ?? res.votes.length;
+  updateAdminUI();
+  renderDots();
+}
+
+function renderDots() {
+  const canvas = document.getElementById("canvas");
+  canvas.querySelectorAll(".dot-wrap").forEach(d => d.remove());
+  let myVoteFound = false;
+  STATE.votes.forEach(v => {
+    const isMe = String(v.name) === String(STATE.myName);
+    if (isMe) myVoteFound = true;
+    if (!isMe && STATE.hideOthers) return;
+    const dx = (isMe && STATE.myX !== null) ? STATE.myX : v.x;
+    const dy = (isMe && STATE.myY !== null) ? STATE.myY : v.y;
+    addDot(canvas, v.name, dx, dy, isMe);
+  });
+  if (!myVoteFound && STATE.myX !== null) addDot(canvas, STATE.myName, STATE.myX, STATE.myY, true);
+  const count = STATE.hideOthers
+    ? STATE.totalCount
+    : STATE.votes.length + (!myVoteFound && STATE.myX !== null ? 1 : 0);
+  document.getElementById("status-count").textContent = count + "人";
+}
+
+function addDot(canvas, name, x, y, isMe) {
+  const wrap = document.createElement("div");
+  wrap.className = "dot-wrap";
+  wrap.style.left = (x * 100) + "%";
+  wrap.style.top = (y * 100) + "%";
+  wrap.style.zIndex = isMe ? 20 : 10;
+  const d = document.createElement("div");
+  d.className = "dot " + (isMe ? "dot-user" : "dot-other");
+  d.textContent = String(name).slice(0, 2);
+  const label = document.createElement("div");
+  label.className = "dot-name";
+  label.textContent = name;
+  wrap.appendChild(d);
+  wrap.appendChild(label);
+  canvas.appendChild(wrap);
+}
+
+function updateAdminUI() {
+  const btnLock = document.getElementById("btn-lock");
+  if (btnLock) {
+    btnLock.textContent = STATE.locked ? "🔓 投票ロックを解除" : "🔒 投票をロック";
+    btnLock.className = "admin-btn " + (STATE.locked ? "admin-btn-danger" : "admin-btn-warn");
   }
+  const btnHide = document.getElementById("btn-hide");
+  if (btnHide) {
+    btnHide.textContent = STATE.hideOthers ? "👁️ 全員に公開する" : "🙈 他の意見を隠す";
+    btnHide.className = "admin-btn " + (STATE.hideOthers ? "admin-btn-danger" : "admin-btn-warn");
+  }
+  document.getElementById("status-lock").style.display = STATE.locked ? "inline-flex" : "none";
+  document.getElementById("status-hide").style.display = STATE.hideOthers ? "inline-flex" : "none";
 }
 
-function startPolling() { poll(); pollTimer = setInterval(poll, POLL_MS); }
-function stopPolling()  { if (pollTimer) clearInterval(pollTimer); }
-
-// ============================================================
-// 描画
-// ============================================================
-const COLORS = ['#4f8ef7','#f74f8e','#4fc97a','#f7c44f','#af4ff7','#4ff7e8','#f7914f','#a0f74f','#f74fce','#4ff7b0'];
-const uidColor = {};
-let ci = 0;
-function color(uid) {
-  if (uid === myUID) return '#4f8ef7';
-  if (!uidColor[uid]) uidColor[uid] = COLORS[ci++ % COLORS.length];
-  return uidColor[uid];
+function openAdminPrompt() {
+  const pass = prompt("管理者パスワード：");
+  if (!pass) return;
+  callAPI("checkAdmin", { pass }).then(res => {
+    if (res.ok) {
+      STATE.adminPass = pass;
+      document.getElementById("admin-panel").style.display = "flex";
+      toast("管理者モードになりました");
+      refreshVotes();
+    } else toast("パスワードが違います");
+  });
 }
 
-// ドット要素のキャッシュ（差分更新用）
-const dotCache = {};
+function exitAdmin() { STATE.adminPass = null; document.getElementById("admin-panel").style.display = "none"; }
 
-function render() {
-  dots2d.style.opacity = modeReady ? '1' : '0';
-  const entries = Object.entries(opinions).filter(([,o]) => o?.x != null && o?.y != null);
-  countLbl.textContent = entries.length;
-  delBtn.style.display = opinions[myUID] ? 'block' : 'none';
-  instrEl.textContent  = opinions[myUID]
-    ? '← クリックして位置を変更できます →'
-    : '← キャンバスをクリックして自分の感覚をプロットしてください →';
+async function saveConfig(type) {
+  const config = type === "theme" ? { theme: document.getElementById("cfg-theme").value } : {
+    labelLeft: document.getElementById("cfg-left").value,
+    labelRight: document.getElementById("cfg-right").value
+  };
+  applyConfig(config);
+  toast("反映しました。保存中…");
+  const res = await callAPI("setConfig", { pass: STATE.adminPass, config });
+  if (res.ok) toast("設定を保存しました");
+  else { await refreshConfig(); toast(res.error || "保存に失敗しました"); }
+}
 
-  const activeUids = new Set(entries.map(([uid]) => uid));
+async function toggleLock() {
+  const ns = !STATE.locked;
+  const prev = STATE.locked;
+  STATE.locked = ns; updateAdminUI(); toast(ns ? "投票をロックしました。保存中…" : "ロックを解除しました。保存中…");
+  const res = await callAPI("setConfig", { pass: STATE.adminPass, config: { locked: String(ns) } });
+  if (res.ok) toast(ns ? "投票をロックしました" : "ロックを解除しました");
+  else { STATE.locked = prev; updateAdminUI(); toast(res.error || "保存に失敗しました"); }
+}
 
-  // 不要なドットを削除
-  Object.keys(dotCache).forEach(uid => {
-    if (!activeUids.has(uid)) {
-      dotCache[uid].remove();
-      delete dotCache[uid];
-    }
+async function toggleHideOthers() {
+  const ns = !STATE.hideOthers;
+  const prev = STATE.hideOthers;
+  STATE.hideOthers = ns; updateAdminUI(); renderDots(); toast(ns ? "他の人の意見を隠しました。保存中…" : "全員に公開しました。保存中…");
+  const res = await callAPI("setConfig", { pass: STATE.adminPass, config: { hideOthers: String(ns) } });
+  if (res.ok) toast(ns ? "他の人の意見を隠しました" : "全員に公開しました");
+  else { STATE.hideOthers = prev; updateAdminUI(); renderDots(); toast(res.error || "保存に失敗しました"); }
+}
+
+function exportImage() {
+  toast("画像を作成中です...");
+  const layout = document.getElementById("canvas-layout");
+  html2canvas(layout, { 
+    backgroundColor: "#0b1220",
+    scale: 3,
+    useCORS: true
+  }).then(c => {
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed"; overlay.style.inset = "0";
+    overlay.style.backgroundColor = "rgba(0,0,0,0.85)"; overlay.style.zIndex = "3000";
+    overlay.style.display = "flex"; overlay.style.flexDirection = "column";
+    overlay.style.alignItems = "center"; overlay.style.justifyContent = "center"; overlay.style.padding = "20px";
+    
+    const instruction = document.createElement("p");
+    instruction.textContent = "画像を右クリック（スマホは長押し）して保存してください";
+    instruction.style.color = "#ffffff"; instruction.style.marginBottom = "24px";
+    instruction.style.fontWeight = "bold"; instruction.style.fontSize = "1.1rem";
+    
+    const img = document.createElement("img");
+    img.src = c.toDataURL("image/png");
+    img.style.maxWidth = "100%"; img.style.maxHeight = "70vh";
+    img.style.borderRadius = "12px"; img.style.boxShadow = "0 12px 40px rgba(0,0,0,0.5)";
+    
+    const closeBtn = document.createElement("button");
+    closeBtn.textContent = "閉じる";
+    closeBtn.style.marginTop = "24px"; closeBtn.style.padding = "12px 30px";
+    closeBtn.style.borderRadius = "8px"; closeBtn.style.border = "none";
+    closeBtn.style.backgroundColor = "var(--accent)"; closeBtn.style.color = "#ffffff";
+    closeBtn.style.fontWeight = "bold"; closeBtn.style.cursor = "pointer"; closeBtn.style.fontSize = "1.05rem";
+    closeBtn.onclick = () => document.body.removeChild(overlay);
+    
+    overlay.appendChild(instruction); overlay.appendChild(img); overlay.appendChild(closeBtn);
+    document.body.appendChild(overlay);
+    toast("画像を作成しました");
+  }).catch(err => {
+    toast("画像の作成に失敗しました");
+    console.error(err);
   });
+}
 
-  // 差分更新：既存ドットは位置だけ更新、新規ドットのみ作成
-  entries.forEach(([uid, op]) => {
-    const isMe = uid === myUID;
-    const col  = color(uid);
-    const lx = `${op.x * 100}%`;
-    const ly = `${op.y * 100}%`;
+async function resetAll() {
+  if (!confirm("本当に全てのデータをリセットしますか？")) return;
+  STATE.myX = null; STATE.myY = null;
+  const res = await callAPI("reset", { pass: STATE.adminPass });
+  if (res.ok) { await refreshConfig(); await refreshVotes(); toast("リセットしました"); }
+}
 
-    if (dotCache[uid]) {
-      // 既存ドット：位置だけ更新（animクラスで滑らかに）
-      const w = dotCache[uid];
-      if (w.style.left !== lx || w.style.top !== ly) {
-        w.classList.add('anim');
-        w.style.left = lx;
-        w.style.top  = ly;
-      }
-    } else {
-      // 新規ドット：アニメーションなしで即時配置
-      const w = document.createElement('div');
-      w.className = 'dw2'; // animなし→即時表示
-      w.style.left   = lx;
-      w.style.top    = ly;
-      w.style.zIndex = isMe ? '40' : '10';
-
-      const l = document.createElement('div');
-      l.className = `dl2 ${isMe ? 'me' : 'other'}`;
-      if (isMe) l.style.background = col;
-      l.textContent = op.name;
-
-      const c = document.createElement('div');
-      c.className = `dc2 ${isMe ? 'me' : 'other'}`;
-      c.style.background = col;
-      if (isMe) c.style.boxShadow = `0 0 0 4px ${col}44`;
-
-      w.appendChild(l);
-      w.appendChild(c);
-      dots2d.appendChild(w);
-      dotCache[uid] = w;
-    }
-  });
-
-  // zIndex再調整（自分を最前面に）
-  if (dotCache[myUID]) dotCache[myUID].style.zIndex = '40';
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 2500);
 }
 </script>
 </body>
