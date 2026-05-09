@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>所感分布図</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:          #0b1220;
+  --surface:     #111c2e;
+  --surface2:    #1a2740;
+  --border:      #1e3050;
+  --border2:     #2a4060;
+  --border-light:#3b5275;
+  --accent:      #2188ff;
+  --accent-hi:   #5ca3ff;
+  --other:       #ff8800;
+  --text:        #edf2f7;
+  --text-dim:    #a1b6cc;
+  --text-mute:   #7087a3;
+  --radius: 16px;
+  --shadow: 0 12px 40px rgba(0,0,0,0.5);
+  --dot-size: 44px;
+}
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(33, 136, 255, 0.6); }
+  70%  { box-shadow: 0 0 0 12px rgba(33, 136, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(33, 136, 255, 0); }
+}
+@keyframes pop-in {
+  0%   { transform: translate(-50%,-50%) scale(0); opacity:0; }
+  70%  { transform: translate(-50%,-50%) scale(1.15); opacity:1; }
+  100% { transform: translate(-50%,-50%) scale(1); opacity:1; }
+}
+@keyframes fade-up {
+  from { opacity:0; transform:translateY(16px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes slide-in-right {
+  from { opacity:0; transform:translateX(30px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", sans-serif;
+  background: var(--bg); color: var(--text);
+  height: 100dvh; width: 100vw;
+  overflow: hidden;
+  display: flex; flex-direction: column; gap: 0;
+}
+#header {
+  flex-shrink: 0; display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface); gap: 16px; min-height: 60px;
+}
+#header-left { display:flex; align-items:center; gap:12px; }
+#logo-mark {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+#logo-mark svg { width:20px; height:20px; }
+#theme-display {
+  font-size: 1.15rem; font-weight: 700; color: var(--text);
+  letter-spacing: -0.01em; max-width: 60vw;
+  overflow: hidden;
+  white-space: nowrap; text-overflow: ellipsis;
+}
+#header-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+#status-pill {
+  display: none; align-items: center; gap: 8px;
+  font-size: 0.85rem; font-weight: 600; color: var(--text-dim);
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 999px; padding: 6px 14px;
+}
+#status-pill .dot-live {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent); animation: pulse-ring 2.5s infinite; flex-shrink: 0;
+}
+#admin-btn {
+  font-size: 0.85rem; font-weight: 600; color: var(--text-dim);
+  background: transparent; border: 1px solid var(--border2);
+  border-radius: 8px; padding: 6px 14px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s; white-space: nowrap;
+}
+#admin-btn:hover { color: var(--text); background: var(--surface2); }
+
+#body { flex: 1; position: relative; display: flex; align-items: stretch; overflow: hidden; }
+
+/* 参加画面 */
+#join-screen {
+  position: absolute;
+  inset: 0; display: flex;
+  align-items: center; justify-content: center;
+  background: var(--bg); z-index: 200; animation: fade-up 0.4s ease both;
+}
+#join-card {
+  width: 100%; max-width: 420px; background: var(--surface);
+  border: 1px solid var(--border2); border-radius: var(--radius);
+  padding: 40px 32px; display: flex;
+  flex-direction: column;
+  gap: 24px; box-shadow: var(--shadow); margin: 20px;
+}
+#join-card h2 {
+  font-size: 1.5rem; font-weight: 900; text-align: center;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+#join-card p {
+  font-size: 0.95rem; color: var(--text-dim); text-align: center;
+  line-height: 1.7; margin-top: -8px;
+}
+#name-input {
+  background: var(--surface2); border: 1.5px solid var(--border2);
+  border-radius: 10px; color: var(--text); font-size: 1.1rem;
+  font-family: inherit; padding: 16px;
+  outline: none;
+  text-align: center; transition: border-color 0.2s, box-shadow 0.2s; width: 100%;
+}
+#name-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(33, 136, 255, 0.2);
+}
+#join-btn {
+  background: var(--accent); color: white; border: none;
+  border-radius: 10px; padding: 16px; font-size: 1.05rem;
+  font-weight: 700; font-family: inherit; cursor: pointer;
+  transition: background 0.2s, transform 0.1s; letter-spacing: -0.01em;
+}
+#join-btn:hover  { background: var(--accent-hi); }
+#join-btn:active { transform: scale(0.98); }
+
+#main-area {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 24px; gap: 24px; overflow: hidden;
+}
+
+/* キャンバスレイアウト */
+#canvas-layout {
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  width: 100%; max-width: 1000px; gap: 20px; height: 100%;
+}
+.track-labels {
+  display: flex; justify-content: space-between; align-items: flex-end; width: 100%;
+  padding: 0 10px;
+}
+.axis-label {
+  font-size: 1.2rem; font-weight: 900; letter-spacing: 0.05em;
+  color: var(--accent-hi); display: flex; align-items: center; gap: 8px;
+  background: var(--surface2); padding: 10px 24px; border-radius: 30px;
+  border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+#canvas {
+  width: 100%; height: 320px;
+  position: relative;
+  background: var(--surface); border: 2px solid var(--border2);
+  border-radius: var(--radius); cursor: crosshair;
+  touch-action: none;
+  overflow: hidden; box-shadow: var(--shadow); flex-shrink: 0;
+}
+
+.track-line {
+  position: absolute; top: 50%; left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--border-light);
+  transform: translateY(-50%);
+  pointer-events: none; z-index: 1;
+}
+.track-tick {
+  position: absolute; top: 0;
+  bottom: 0; width: 2px;
+  background: rgba(255,255,255,0.03); pointer-events: none; z-index: 1;
+}
+.track-tick::after {
+  content: ""; position: absolute; top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); width: 4px; height: 24px;
+  background: var(--border-light);
+}
+.track-tick-label {
+  position: absolute; top: calc(50% + 20px);
+  transform: translateX(-50%);
+  font-size: 0.9rem; color: var(--text-dim); font-weight: 700;
+  pointer-events: none; z-index: 1;
+}
+
+.dot-wrap {
+  position: absolute; transform: translate(-50%,-50%);
+  z-index: 10; pointer-events: auto; cursor: default;
+  transition: left 0.35s cubic-bezier(0.34,1.56,0.64,1), top 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  animation: pop-in 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.dot {
+  width: var(--dot-size); height: var(--dot-size); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 900;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+.dot-user {
+  background: var(--accent); border: 3px solid white;
+  box-shadow: 0 0 0 4px rgba(33, 136, 255, 0.35), 0 4px 12px rgba(0,0,0,0.4);
+  animation: pulse-ring 2.5s 0.4s infinite;
+  z-index: 20;
+}
+.dot-other {
+  background: var(--other); border: 2.5px solid rgba(255,255,255,0.6);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.35);
+}
+.dot-name {
+  position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  background: rgba(10,16,30,0.95); color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 700; white-space: nowrap;
+  padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border-light);
+  pointer-events: none; opacity: 0; transition: opacity 0.15s;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.dot-wrap:hover .dot-name { opacity: 1; }
+
+#admin-panel {
+  display: none; flex-direction: column; gap: 0; width: 300px;
+  flex-shrink: 0;
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+  max-height: calc(100vh - 60px - 48px);
+  overflow-y: auto;
+  animation: slide-in-right 0.25s ease both;
+}
+.admin-section { padding: 20px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column;
+  gap: 12px; }
+.admin-section:last-child { border-bottom: none; }
+.admin-section-title { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; color: var(--text-mute); }
+.admin-input {
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 8px; color: var(--text); font-size: 0.95rem;
+  padding: 10px 14px; outline: none;
+  width: 100%;
+}
+.admin-input:focus { border-color: var(--accent); }
+.admin-row { display: flex; align-items: center; gap: 10px; }
+.admin-row-label { font-size: 0.85rem; font-weight: 700; color: var(--text-dim);
+  width: 24px; flex-shrink: 0; text-align: center; }
+.admin-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%;
+  padding: 12px; border-radius: 8px; border: none;
+  font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: filter 0.15s, transform 0.1s;
+}
+.admin-btn:hover  { filter: brightness(1.12); }
+.admin-btn:active { transform: scale(0.97); }
+.admin-btn-primary { background: var(--accent); color: white; }
+.admin-btn-warn    { background: #e67a00; color: white; }
+.admin-btn-danger  { background: #cc3333; color: white; }
+.admin-btn-green   { background: #1f994d; color: white; }
+#admin-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: rgba(33, 136, 255, 0.1);
+  border-bottom: 1px solid var(--border2); }
+#admin-header span { font-size: 0.9rem; font-weight: 700; color: var(--accent-hi); }
+#admin-close-btn { background: none; border: none;
+  color: var(--text-mute); font-size: 1.4rem; cursor: pointer; }
+
+#status-bar {
+  display: none; flex-shrink: 0; align-items: center; justify-content: space-between;
+  padding: 8px 20px;
+  font-size: 0.85rem; color: var(--text-mute);
+  border-top: 1px solid var(--border); background: var(--surface); min-height: 40px;
+}
+#status-bar .badge-row { display: flex; align-items: center; gap: 12px; }
+#status-lock { display: none; align-items: center; gap: 6px; font-weight: 700; color: #d94040; }
+#status-hide { display: none; align-items: center; gap: 6px; font-weight: 700; color: var(--accent-hi); }
+#status-user { font-weight: 700; color: var(--text-dim); }
+
+#toast {
+  position: fixed;
+  top: 80px; left: 50%; transform: translateX(-50%) translateY(-30px);
+  background: var(--surface); border: 2px solid var(--border2); color: var(--text);
+  padding: 12px 30px; border-radius: 30px;
+  font-weight: 700; font-size: 0.95rem;
+  box-shadow: var(--shadow); opacity: 0; pointer-events: none;
+  transition: transform 0.3s, opacity 0.3s; z-index: 1000;
+}
+#toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+<div id="header">
+  <div id="header-left">
+    <div id="logo-mark">
+      <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="5" width="14" height="8" rx="2" stroke="white" stroke-width="1.5"/>
+        <circle cx="9" cy="9" r="2" fill="white" opacity="0.9"/>
+        <line x1="5" y1="9" x2="6" y2="9" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="12" y1="9" x2="13" y2="9" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div id="theme-display">読み込み中…</div>
+  </div>
+  <div id="header-right">
+    <div id="status-pill"><div class="dot-live"></div><span id="status-count">0人</span>が回答中</div>
+    <button id="admin-btn" onclick="openAdminPrompt()">管理者</button>
+  </div>
+</div>
+<div id="body">
+  <div id="join-screen">
+    <div id="join-card">
+      <h2>参加登録</h2>
+      <p>名前を入力してキャンバスに参加してください。<br>横軸の割合であなたの意見を表明しましょう。</p>
+      <input type="text" id="name-input" placeholder="名前を入力（最大20文字）" maxlength="20" onkeydown="if(event.key==='Enter') join()">
+      <button id="join-btn" onclick="join()">キャンバスに入る →</button>
+    </div>
+  </div>
+  <div id="main-area">
+    <div id="canvas-layout">
+      <div class="track-labels">
+        <div id="canvas-label-left" class="axis-label">100% 反対</div>
+        <div id="canvas-label-right" class="axis-label">100% 賛成</div>
+      </div>
+      <div id="canvas">
+        <div class="track-line"></div>
+        <div class="track-tick" style="left: 25%;"></div>
+        <div class="track-tick" style="left: 50%;"></div>
+        <div class="track-tick" style="left: 75%;"></div>
+        <div class="track-tick-label" style="left: 25%;">25%</div>
+        <div class="track-tick-label" style="left: 50%;">50%</div>
+        <div class="track-tick-label" style="left: 75%;">75%</div>
+      </div>
+      <p style="font-size: 0.9rem; color: var(--text-mute); margin-top: 4px;">
+        ※ 横位置が「割合」を表します。縦位置はアイコンが重ならないように自由に調整してください。
+      </p>
+    </div>
+    <div id="admin-panel">
+      <div id="admin-header"><span>管理者パネル</span><button id="admin-close-btn" onclick="exitAdmin()">✕</button></div>
+      <div class="admin-section">
+        <div class="admin-section-title">テーマ設定</div>
+        <input class="admin-input" id="cfg-theme" type="text" placeholder="例：あなたの意見は？">
+        <button class="admin-btn admin-btn-primary" onclick="saveConfig('theme')">テーマを保存</button>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-title">両端のラベル設定</div>
+        <div class="admin-row"><div class="admin-row-label">左</div><input class="admin-input" id="cfg-left" type="text"></div>
+        <div class="admin-row"><div class="admin-row-label">右</div><input class="admin-input" id="cfg-right" type="text"></div>
+        <button class="admin-btn admin-btn-primary" onclick="saveConfig('labels')">ラベルを保存</button>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-title">キャンバス制御</div>
+        <button id="btn-hide" class="admin-btn admin-btn-warn" onclick="toggleHideOthers()">🙈 他の意見を隠す</button>
+        <button id="btn-lock" class="admin-btn admin-btn-warn" onclick="toggleLock()">🔒 投票をロック</button>
+        <button class="admin-btn admin-btn-green" onclick="exportImage()">🖼️ 画像として保存</button>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-title">危険な操作</div>
+        <button class="admin-btn admin-btn-danger" onclick="resetAll()">⚠️ 全データをリセット</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="status-bar">
+  <div class="badge-row">
+    <span id="status-lock">ロック中</span>
+    <span id="status-hide">非表示モード</span>
+  </div>
+  <span id="status-user"></span>
+</div>
+<div id="toast"></div>
+
+<script>
+// ===================================================
+// GAS デプロイURL（ここだけ変更すればOK）
+// ===================================================
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzLpQyZ7MlaRCexu50ivACCMPhEHmJBw2uhi5YDF7GEyh_pbEI2w_cHOOb6xBCUIe6F/exec";
+
+const STATE = { myName: null, adminPass: null, config: {}, votes: [], totalCount: 0, locked: false, hideOthers: false, myX: null, myY: null };
+
+// google.script.run の代わりにfetchでGASのdoPostを呼ぶ
+async function callAPI(action, params = {}) {
+  const res = await fetch(GAS_URL, {
+    method: "POST",
+    body: JSON.stringify({ action, ...params }),
+  });
+  return res.json();
+}
+
+window.addEventListener("load", async () => {
+  await refreshConfig();
+  await refreshVotes();
+  setInterval(refreshVotes, 5000);
+});
+
+async function refreshConfig() {
+  const res = await callAPI("getConfig", {});
+  if (!res.ok) return;
+  applyConfig(res.config);
+}
+
+function applyConfig(config) {
+  STATE.config = Object.assign({}, STATE.config, config);
+  const c = STATE.config;
+  document.getElementById("theme-display").textContent = c.theme || "このアイデアに賛成ですか？";
+  document.getElementById("cfg-theme").value = c.theme || "";
+  const l = c.labelLeft || "100% 反対";
+  const r = c.labelRight || "100% 賛成";
+  document.getElementById("canvas-label-left").textContent = l;
+  document.getElementById("canvas-label-right").textContent = r;
+  document.getElementById("cfg-left").value = l;
+  document.getElementById("cfg-right").value = r;
+}
+
+function join() {
+  const name = document.getElementById("name-input").value.trim();
+  if (!name) { toast("名前を入力してください"); return; }
+  STATE.myName = name;
+  const joinScreen = document.getElementById("join-screen");
+  joinScreen.style.opacity = "0";
+  joinScreen.style.transition = "opacity 0.3s";
+  setTimeout(() => { joinScreen.style.display = "none"; }, 300);
+  document.getElementById("canvas-layout").style.display = "flex";
+  document.getElementById("status-bar").style.display = "flex";
+  document.getElementById("status-pill").style.display = "flex";
+  document.getElementById("status-user").textContent = name;
+  const canvas = document.getElementById("canvas");
+  const handler = (e) => {
+    e.preventDefault();
+    if (STATE.locked) { toast("ロック中 — 投票できません"); return; }
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    STATE.myX = Math.max(0.02, Math.min(0.98, (cx - rect.left) / rect.width));
+    STATE.myY = Math.max(0.05, Math.min(0.95, (cy - rect.top) / rect.height));
+    renderDots();
+    sendVote(STATE.myX, STATE.myY);
+  };
+  canvas.addEventListener("click", handler);
+  canvas.addEventListener("touchstart", handler, { passive: false });
+  refreshVotes();
+}
+
+async function sendVote(x, y) {
+  const res = await callAPI("vote", { name: STATE.myName, x, y });
+  if (!res.ok) { toast(res.error || "投票できませんでした"); return; }
+  await refreshVotes();
+}
+
+async function refreshVotes() {
+  const res = await callAPI("getVotes", { name: STATE.myName, pass: STATE.adminPass });
+  if (!res.ok) return;
+  STATE.locked = res.locked;
+  STATE.hideOthers = res.hideOthers;
+  STATE.votes = res.votes;
+  STATE.totalCount = res.totalCount ?? res.votes.length;
+  updateAdminUI();
+  renderDots();
+}
+
+function renderDots() {
+  const canvas = document.getElementById("canvas");
+  canvas.querySelectorAll(".dot-wrap").forEach(d => d.remove());
+  let myVoteFound = false;
+  STATE.votes.forEach(v => {
+    const isMe = String(v.name) === String(STATE.myName);
+    if (isMe) myVoteFound = true;
+    if (!isMe && STATE.hideOthers) return;
+    const dx = (isMe && STATE.myX !== null) ? STATE.myX : v.x;
+    const dy = (isMe && STATE.myY !== null) ? STATE.myY : v.y;
+    addDot(canvas, v.name, dx, dy, isMe);
+  });
+  if (!myVoteFound && STATE.myX !== null) addDot(canvas, STATE.myName, STATE.myX, STATE.myY, true);
+  const count = STATE.hideOthers
+    ? STATE.totalCount
+    : STATE.votes.length + (!myVoteFound && STATE.myX !== null ? 1 : 0);
+  document.getElementById("status-count").textContent = count + "人";
+}
+
+function addDot(canvas, name, x, y, isMe) {
+  const wrap = document.createElement("div");
+  wrap.className = "dot-wrap";
+  wrap.style.left = (x * 100) + "%";
+  wrap.style.top = (y * 100) + "%";
+  wrap.style.zIndex = isMe ? 20 : 10;
+  const d = document.createElement("div");
+  d.className = "dot " + (isMe ? "dot-user" : "dot-other");
+  d.textContent = String(name).slice(0, 2);
+  const label = document.createElement("div");
+  label.className = "dot-name";
+  label.textContent = name;
+  wrap.appendChild(d);
+  wrap.appendChild(label);
+  canvas.appendChild(wrap);
+}
+
+function updateAdminUI() {
+  const btnLock = document.getElementById("btn-lock");
+  if (btnLock) {
+    btnLock.textContent = STATE.locked ? "🔓 投票ロックを解除" : "🔒 投票をロック";
+    btnLock.className = "admin-btn " + (STATE.locked ? "admin-btn-danger" : "admin-btn-warn");
+  }
+  const btnHide = document.getElementById("btn-hide");
+  if (btnHide) {
+    btnHide.textContent = STATE.hideOthers ? "👁️ 全員に公開する" : "🙈 他の意見を隠す";
+    btnHide.className = "admin-btn " + (STATE.hideOthers ? "admin-btn-danger" : "admin-btn-warn");
+  }
+  document.getElementById("status-lock").style.display = STATE.locked ? "inline-flex" : "none";
+  document.getElementById("status-hide").style.display = STATE.hideOthers ? "inline-flex" : "none";
+}
+
+function openAdminPrompt() {
+  const pass = prompt("管理者パスワード：");
+  if (!pass) return;
+  callAPI("checkAdmin", { pass }).then(res => {
+    if (res.ok) {
+      STATE.adminPass = pass;
+      document.getElementById("admin-panel").style.display = "flex";
+      toast("管理者モードになりました");
+      refreshVotes();
+    } else toast("パスワードが違います");
+  });
+}
+
+function exitAdmin() { STATE.adminPass = null; document.getElementById("admin-panel").style.display = "none"; }
+
+async function saveConfig(type) {
+  const config = type === "theme" ? { theme: document.getElementById("cfg-theme").value } : {
+    labelLeft: document.getElementById("cfg-left").value,
+    labelRight: document.getElementById("cfg-right").value
+  };
+  applyConfig(config);
+  toast("反映しました。保存中…");
+  const res = await callAPI("setConfig", { pass: STATE.adminPass, config });
+  if (res.ok) toast("設定を保存しました");
+  else { await refreshConfig(); toast(res.error || "保存に失敗しました"); }
+}
+
+async function toggleLock() {
+  const ns = !STATE.locked;
+  const prev = STATE.locked;
+  STATE.locked = ns; updateAdminUI(); toast(ns ? "投票をロックしました。保存中…" : "ロックを解除しました。保存中…");
+  const res = await callAPI("setConfig", { pass: STATE.adminPass, config: { locked: String(ns) } });
+  if (res.ok) toast(ns ? "投票をロックしました" : "ロックを解除しました");
+  else { STATE.locked = prev; updateAdminUI(); toast(res.error || "保存に失敗しました"); }
+}
+
+async function toggleHideOthers() {
+  const ns = !STATE.hideOthers;
+  const prev = STATE.hideOthers;
+  STATE.hideOthers = ns; updateAdminUI(); renderDots(); toast(ns ? "他の人の意見を隠しました。保存中…" : "全員に公開しました。保存中…");
+  const res = await callAPI("setConfig", { pass: STATE.adminPass, config: { hideOthers: String(ns) } });
+  if (res.ok) toast(ns ? "他の人の意見を隠しました" : "全員に公開しました");
+  else { STATE.hideOthers = prev; updateAdminUI(); renderDots(); toast(res.error || "保存に失敗しました"); }
+}
+
+function exportImage() {
+  toast("画像を作成中です...");
+  const layout = document.getElementById("canvas-layout");
+  html2canvas(layout, { 
+    backgroundColor: "#0b1220",
+    scale: 3,
+    useCORS: true
+  }).then(c => {
+    const overlay = document.createElement("div");
+    overlay.style.position = "fixed"; overlay.style.inset = "0";
+    overlay.style.backgroundColor = "rgba(0,0,0,0.85)"; overlay.style.zIndex = "3000";
+    overlay.style.display = "flex"; overlay.style.flexDirection = "column";
+    overlay.style.alignItems = "center"; overlay.style.justifyContent = "center"; overlay.style.padding = "20px";
+    
+    const instruction = document.createElement("p");
+    instruction.textContent = "画像を右クリック（スマホは長押し）して保存してください";
+    instruction.style.color = "#ffffff"; instruction.style.marginBottom = "24px";
+    instruction.style.fontWeight = "bold"; instruction.style.fontSize = "1.1rem";
+    
+    const img = document.createElement("img");
+    img.src = c.toDataURL("image/png");
+    img.style.maxWidth = "100%"; img.style.maxHeight = "70vh";
+    img.style.borderRadius = "12px"; img.style.boxShadow = "0 12px 40px rgba(0,0,0,0.5)";
+    
+    const closeBtn = document.createElement("button");
+    closeBtn.textContent = "閉じる";
+    closeBtn.style.marginTop = "24px"; closeBtn.style.padding = "12px 30px";
+    closeBtn.style.borderRadius = "8px"; closeBtn.style.border = "none";
+    closeBtn.style.backgroundColor = "var(--accent)"; closeBtn.style.color = "#ffffff";
+    closeBtn.style.fontWeight = "bold"; closeBtn.style.cursor = "pointer"; closeBtn.style.fontSize = "1.05rem";
+    closeBtn.onclick = () => document.body.removeChild(overlay);
+    
+    overlay.appendChild(instruction); overlay.appendChild(img); overlay.appendChild(closeBtn);
+    document.body.appendChild(overlay);
+    toast("画像を作成しました");
+  }).catch(err => {
+    toast("画像の作成に失敗しました");
+    console.error(err);
+  });
+}
+
+async function resetAll() {
+  if (!confirm("本当に全てのデータをリセットしますか？")) return;
+  STATE.myX = null; STATE.myY = null;
+  const res = await callAPI("reset", { pass: STATE.adminPass });
+  if (res.ok) { await refreshConfig(); await refreshVotes(); toast("リセットしました"); }
+}
+
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 2500);
+}
+</script>
+</body>
+</html>
